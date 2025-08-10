@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, useLocation, useParams } from 'react-router-dom';
+import { Navigate, useLocation, useParams, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { getPortalConfig } from '@/config/portals';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Building2, Shield, Eye, EyeOff } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export function LoginPage() {
   const { portal } = useParams<{ portal?: string }>();
@@ -21,13 +22,14 @@ export function LoginPage() {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedPortal, setSelectedPortal] = useState(portal || 'customer-portal');
 
-  const portalConfig = portal ? getPortalConfig(portal) : null;
-  const isAdminLogin = portal === 'admin';
+  const portalConfig = selectedPortal ? getPortalConfig(selectedPortal === 'customer-portal' ? 'shell' : selectedPortal) : null;
+  const isAdminLogin = selectedPortal === 'admin';
 
   if (isAuthenticated) {
     const from = location.state?.from?.pathname || 
-      (portal === 'admin' ? '/admin/dashboard' : '/customer-portal/dashboard');
+      (selectedPortal === 'admin' ? '/admin/dashboard' : '/customer-portal/dashboard');
     return <Navigate to={from} replace />;
   }
 
@@ -37,14 +39,14 @@ export function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      const targetPortal = portal === 'admin' ? 'admin' : 'customer-portal';
+      const targetPortal = selectedPortal === 'admin' ? 'admin' : 'customer-portal';
       await login({
         ...credentials,
         portal: targetPortal,
       });
       
       // Redirect after successful login
-      if (portal === 'admin') {
+      if (selectedPortal === 'admin') {
         window.location.href = '/admin/dashboard';
       } else {
         window.location.href = '/customer-portal/dashboard';
@@ -63,6 +65,192 @@ export function LoginPage() {
     if (error) setError('');
   };
 
+  // If no portal specified in URL, show portal selection
+  if (!portal) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center space-y-4">
+            <div className="flex items-center justify-center">
+              <Building2 className="h-12 w-12 text-primary" />
+            </div>
+            
+            <div>
+              <CardTitle className="text-2xl font-bold">
+                PKBSL Portal Login
+              </CardTitle>
+              <CardDescription>
+                Select your portal and sign in
+              </CardDescription>
+            </div>
+          </CardHeader>
+
+          <CardContent>
+            <Tabs value={selectedPortal} onValueChange={setSelectedPortal} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="customer-portal">Customer</TabsTrigger>
+                <TabsTrigger value="admin">Admin</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="customer-portal" className="mt-4">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {error && (
+                    <Alert variant="destructive">
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Enter your email"
+                      value={credentials.email}
+                      onChange={handleInputChange('email')}
+                      required
+                      disabled={isSubmitting}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Enter your password"
+                        value={credentials.password}
+                        onChange={handleInputChange('password')}
+                        required
+                        disabled={isSubmitting}
+                        className="pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                        disabled={isSubmitting}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={isSubmitting || isLoading}
+                  >
+                    {isSubmitting ? (
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Signing in...
+                      </div>
+                    ) : (
+                      'Sign In to Customer Portal'
+                    )}
+                  </Button>
+                </form>
+
+                <div className="mt-4 text-center text-sm text-muted-foreground">
+                  <p>Demo Credentials:</p>
+                  <div className="mt-2 space-y-1">
+                    <p><strong>Shell:</strong> shell@admin.com / password</p>
+                    <p><strong>Siemens:</strong> siemens@admin.com / password</p>
+                    <p><strong>UniLever:</strong> unilever@admin.com / password</p>
+                  </div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="admin" className="mt-4">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {error && (
+                    <Alert variant="destructive">
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="admin-email">Email</Label>
+                    <Input
+                      id="admin-email"
+                      type="email"
+                      placeholder="Enter your email"
+                      value={credentials.email}
+                      onChange={handleInputChange('email')}
+                      required
+                      disabled={isSubmitting}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="admin-password">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="admin-password"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Enter your password"
+                        value={credentials.password}
+                        onChange={handleInputChange('password')}
+                        required
+                        disabled={isSubmitting}
+                        className="pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                        disabled={isSubmitting}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={isSubmitting || isLoading}
+                  >
+                    {isSubmitting ? (
+                      <div className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Signing in...
+                      </div>
+                    ) : (
+                      'Sign In to Admin Portal'
+                    )}
+                  </Button>
+                </form>
+
+                <div className="mt-4 text-center text-sm text-muted-foreground">
+                  <p>Demo Credentials:</p>
+                  <div className="mt-2 space-y-1">
+                    <p><strong>Admin:</strong> admin@pkbsl.com / password</p>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Portal-specific login (when accessed via /login/admin or /login/customer-portal)
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
       <Card className="w-full max-w-md">
@@ -77,7 +265,7 @@ export function LoginPage() {
           
           <div>
             <CardTitle className="text-2xl font-bold">
-              {portalConfig?.displayName || 'PKBSL Admin Portal'}
+              {portalConfig?.displayName || (isAdminLogin ? 'PKBSL Admin Portal' : 'PKBSL Customer Portal')}
             </CardTitle>
             <CardDescription>
               Sign in to access your logistics dashboard
@@ -165,6 +353,12 @@ export function LoginPage() {
                 </>
               )}
             </div>
+          </div>
+
+          <div className="mt-4 text-center">
+            <Link to="/login" className="text-sm text-primary hover:underline">
+              ← Back to portal selection
+            </Link>
           </div>
         </CardContent>
       </Card>
