@@ -11,8 +11,8 @@ export function UnauthorizedPage() {
   const handleGoBack = () => {
     if (user?.role === 'admin') {
       navigate('/admin/dashboard');
-    } else if (user?.portalAccess?.[0]) {
-      navigate(`/${user.portalAccess[0]}/dashboard`);
+    } else if (user?.role === 'customer_admin' || user?.role === 'viewer') {
+      navigate('/customer-portal/dashboard');
     } else {
       navigate('/');
     }

@@ -19,9 +19,14 @@ export function PortalProvider({ children }: { children: ReactNode }) {
   const pathSegments = location.pathname.split('/').filter(Boolean);
   const portalName = pathSegments[0] || null;
   
-  const currentPortal = portalName ? getPortalConfig(portalName) : null;
+  // Handle customer portal routing
   const isAdminPortal = portalName === 'admin';
-  const isCustomerPortal = !isAdminPortal && !!currentPortal;
+  const isCustomerPortal = portalName === 'customer-portal';
+  
+  // For customer portal, we'll use a default config or get from user context
+  const currentPortal = isAdminPortal ? getPortalConfig('admin') : 
+                       isCustomerPortal ? getPortalConfig('shell') : // Default customer portal config
+                       getPortalConfig(portalName || '');
 
   return (
     <PortalContext.Provider

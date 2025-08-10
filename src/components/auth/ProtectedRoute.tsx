@@ -25,9 +25,11 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Check portal access
-  if (portalName && user && !user.portalAccess.includes(portalName)) {
-    return <Navigate to="/unauthorized" replace />;
+  // Check portal access - simplified for customer portal structure
+  if (portalName && user && portalName !== 'login' && portalName !== 'unauthorized') {
+    if (!user.portalAccess.includes(portalName)) {
+      return <Navigate to="/unauthorized" replace />;
+    }
   }
 
   // Check role requirements

@@ -26,25 +26,25 @@ export function CustomerSidebar() {
   const menuItems = [
     {
       title: 'Dashboard',
-      url: `/${portalName}/dashboard`,
+      url: '/customer-portal/dashboard',
       icon: LayoutDashboard,
       enabled: currentPortal.features.dashboard,
     },
     {
       title: 'HSE Monitoring',
-      url: `/${portalName}/hse`,
+      url: '/customer-portal/hse',
       icon: Shield,
       enabled: currentPortal.features.hse,
     },
     {
       title: 'Shipments',
-      url: `/${portalName}/shipments`,
+      url: '/customer-portal/shipments',
       icon: Truck,
       enabled: currentPortal.features.shipments,
     },
     {
       title: 'Invoices',
-      url: `/${portalName}/invoices`,
+      url: '/customer-portal/invoices',
       icon: FileText,
       enabled: currentPortal.features.invoices,
     },

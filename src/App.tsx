@@ -47,7 +47,7 @@ const App = () => (
               } />
 
               {/* Customer Portal Routes */}
-              <Route path="/:portal/*" element={
+              <Route path="/customer-portal/*" element={
                 <ProtectedRoute>
                   <PortalLayout>
                     <Routes>
@@ -55,7 +55,7 @@ const App = () => (
                       <Route path="hse" element={<HSEPage />} />
                       <Route path="shipments" element={<ShipmentsPage />} />
                       <Route path="invoices" element={<InvoicesPage />} />
-                      <Route path="*" element={<Navigate to="dashboard" replace />} />
+                      <Route path="*" element={<Navigate to="/customer-portal/dashboard" replace />} />
                     </Routes>
                   </PortalLayout>
                 </ProtectedRoute>

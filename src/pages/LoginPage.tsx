@@ -26,7 +26,8 @@ export function LoginPage() {
   const isAdminLogin = portal === 'admin';
 
   if (isAuthenticated) {
-    const from = location.state?.from?.pathname || `/${portal || 'admin'}/dashboard`;
+    const from = location.state?.from?.pathname || 
+      (portal === 'admin' ? '/admin/dashboard' : '/customer-portal/dashboard');
     return <Navigate to={from} replace />;
   }
 
@@ -36,10 +37,18 @@ export function LoginPage() {
     setIsSubmitting(true);
 
     try {
+      const targetPortal = portal === 'admin' ? 'admin' : 'customer-portal';
       await login({
         ...credentials,
-        portal: portal || 'admin',
+        portal: targetPortal,
       });
+      
+      // Redirect after successful login
+      if (portal === 'admin') {
+        window.location.href = '/admin/dashboard';
+      } else {
+        window.location.href = '/customer-portal/dashboard';
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {

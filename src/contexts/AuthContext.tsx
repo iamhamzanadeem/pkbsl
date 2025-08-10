@@ -57,7 +57,7 @@ const mockUsers: { [email: string]: User } = {
     name: 'Shell Pakistan Admin',
     role: 'customer_admin',
     customerId: 'shell',
-    portalAccess: ['shell'],
+    portalAccess: ['customer-portal'],
   },
   'siemens@admin.com': {
     id: '3',
@@ -65,7 +65,7 @@ const mockUsers: { [email: string]: User } = {
     name: 'Siemens Admin',
     role: 'customer_admin',
     customerId: 'siemens',
-    portalAccess: ['siemens'],
+    portalAccess: ['customer-portal'],
   },
   'unilever@admin.com': {
     id: '4',
@@ -73,7 +73,7 @@ const mockUsers: { [email: string]: User } = {
     name: 'UniLever Admin',
     role: 'customer_admin',
     customerId: 'unilever',
-    portalAccess: ['unilever'],
+    portalAccess: ['customer-portal'],
   },
 };
 
