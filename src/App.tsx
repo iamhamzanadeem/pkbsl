@@ -13,6 +13,11 @@ import { HSEPage } from "@/pages/customer/HSEPage";
 import { ShipmentsPage } from "@/pages/customer/ShipmentsPage";
 import { InvoicesPage } from "@/pages/customer/InvoicesPage";
 import { AdminDashboard } from "@/pages/admin/AdminDashboard";
+import { AdminShipmentsPage } from "@/pages/admin/AdminShipmentsPage";
+import { AdminHSEPage } from "@/pages/admin/AdminHSEPage";
+import { AdminInvoicesPage } from "@/pages/admin/AdminInvoicesPage";
+import { DataManagementPage } from "@/pages/admin/DataManagementPage";
+import { SystemSettingsPage } from "@/pages/admin/SystemSettingsPage";
 import { UnauthorizedPage } from "@/pages/UnauthorizedPage";
 import NotFound from "./pages/NotFound";
 
@@ -40,6 +45,11 @@ const App = () => (
                       <Route path="dashboard" element={<AdminDashboard />} />
                       <Route path="customers" element={<div className="p-6"><h1 className="text-2xl font-bold">Customer Management</h1><p className="text-muted-foreground">Coming soon...</p></div>} />
                       <Route path="users" element={<div className="p-6"><h1 className="text-2xl font-bold">User Management</h1><p className="text-muted-foreground">Coming soon...</p></div>} />
+                      <Route path="shipments" element={<AdminShipmentsPage />} />
+                      <Route path="hse" element={<AdminHSEPage />} />
+                      <Route path="invoices" element={<AdminInvoicesPage />} />
+                      <Route path="data" element={<DataManagementPage />} />
+                      <Route path="settings" element={<SystemSettingsPage />} />
                       <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
                     </Routes>
                   </PortalLayout>
