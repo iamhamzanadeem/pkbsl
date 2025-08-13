@@ -15,18 +15,29 @@ const PortalContext = createContext<PortalContextType | undefined>(undefined);
 export function PortalProvider({ children }: { children: ReactNode }) {
   const location = useLocation();
   
-  // Extract portal name from URL
+  // Extract portal name from URL with better handling
   const pathSegments = location.pathname.split('/').filter(Boolean);
   const portalName = pathSegments[0] || null;
   
-  // Handle customer portal routing
+  // Handle portal routing with fallbacks
   const isAdminPortal = portalName === 'admin';
   const isCustomerPortal = portalName === 'customer-portal';
   
-  // For customer portal, we'll use a default config or get from user context
-  const currentPortal = isAdminPortal ? getPortalConfig('admin') : 
-                       isCustomerPortal ? getPortalConfig('shell') : // Default customer portal config
-                       getPortalConfig(portalName || '');
+  // Improved portal config with fallbacks
+  let currentPortal = null;
+  try {
+    if (isAdminPortal) {
+      currentPortal = getPortalConfig('admin');
+    } else if (isCustomerPortal) {
+      currentPortal = getPortalConfig('shell'); // Default customer portal config
+    } else if (portalName) {
+      currentPortal = getPortalConfig(portalName);
+    }
+  } catch (error) {
+    console.warn('Portal config error:', error);
+    // Fallback to default behavior
+    currentPortal = null;
+  }
 
   return (
     <PortalContext.Provider

@@ -42,19 +42,14 @@ export function AdminSidebar() {
       icon: Building2,
     },
     {
-      title: 'Users',
-      url: '/admin/users',
-      icon: Users,
+      title: 'HSE Monitoring',
+      url: '/admin/hse',
+      icon: Shield,
     },
     {
       title: 'All Shipments',
       url: '/admin/shipments',
       icon: Truck,
-    },
-    {
-      title: 'HSE Monitoring',
-      url: '/admin/hse',
-      icon: Shield,
     },
     {
       title: 'Invoices',
@@ -65,6 +60,11 @@ export function AdminSidebar() {
       title: 'Data Management',
       url: '/admin/data',
       icon: Database,
+    },
+    {
+      title: 'Users',
+      url: '/admin/users',
+      icon: Users,
     },
     {
       title: 'System Settings',
