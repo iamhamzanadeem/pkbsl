@@ -4,8 +4,8 @@ const Index = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+        <h1 className="text-4xl font-bold mb-4">PKBSL</h1>
+        <p className="text-xl text-muted-foreground">PKBSL, Premiere logistics company of Pakistan</p>
       </div>
     </div>
   );
