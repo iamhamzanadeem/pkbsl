@@ -5,7 +5,7 @@ const Index = () => {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="text-center">
         <h1 className="text-4xl font-bold mb-4">PKBSL</h1>
-        <p className="text-xl text-muted-foreground">PKBSL, Premiere logistics company of Pakistan</p>
+        <p className="text-xl text-muted-foreground">PKBSL Portal - Logistics Management System</p>
       </div>
     </div>
   );
