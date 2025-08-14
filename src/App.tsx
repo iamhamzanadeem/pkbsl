@@ -19,6 +19,7 @@ import { AdminInvoicesPage } from "@/pages/admin/AdminInvoicesPage";
 import { DataManagementPage } from "@/pages/admin/DataManagementPage";
 import { SystemSettingsPage } from "@/pages/admin/SystemSettingsPage";
 import { UnauthorizedPage } from "@/pages/UnauthorizedPage";
+import { RootRedirect } from "@/components/auth/RootRedirect";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -72,7 +73,7 @@ const App = () => (
               } />
 
               {/* Root redirect */}
-              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="/" element={<RootRedirect />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </PortalProvider>
