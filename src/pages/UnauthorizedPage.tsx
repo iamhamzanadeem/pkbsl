@@ -9,12 +9,19 @@ export function UnauthorizedPage() {
   const navigate = useNavigate();
 
   const handleGoBack = () => {
-    if (user?.role === 'admin') {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    
+    // Navigate to appropriate dashboard based on user role
+    if (user.role === 'admin') {
       navigate('/admin/dashboard');
-    } else if (user?.role === 'customer_admin' || user?.role === 'viewer') {
+    } else if (user.role === 'customer_admin' || user.role === 'viewer') {
       navigate('/customer-portal/dashboard');
     } else {
-      navigate('/');
+      // Fallback to login if role is unclear
+      navigate('/login');
     }
   };
 

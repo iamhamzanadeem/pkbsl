@@ -25,8 +25,12 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Improved portal access logic
-  if (user && portalName && portalName !== 'login' && portalName !== 'unauthorized') {
+  // Skip portal access checks for special routes
+  const specialRoutes = ['login', 'unauthorized', '404'];
+  const isSpecialRoute = specialRoutes.includes(portalName || '') || location.pathname === '/unauthorized';
+  
+  // Only perform portal access checks for actual portal routes
+  if (user && portalName && !isSpecialRoute && (isAdminPortal || isCustomerPortal)) {
     // For admin portal - check if user has admin role
     if (isAdminPortal && user.role !== 'admin') {
       return <Navigate to="/unauthorized" replace />;
