@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, useLocation, useParams, Link } from 'react-router-dom';
+import { Navigate, useLocation, useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { getPortalConfig } from '@/config/portals';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 export function LoginPage() {
   const { portal } = useParams<{ portal?: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
   const { login, isAuthenticated, isLoading } = useAuth();
   
   const [credentials, setCredentials] = useState({
@@ -45,12 +46,9 @@ export function LoginPage() {
         portal: targetPortal,
       });
       
-      // Redirect after successful login
-      if (selectedPortal === 'admin') {
-        window.location.href = '/admin/dashboard';
-      } else {
-        window.location.href = '/customer-portal/dashboard';
-      }
+      // Navigate after successful login without page reload
+      const targetPath = selectedPortal === 'admin' ? '/admin/dashboard' : '/customer-portal/dashboard';
+      navigate(targetPath, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
