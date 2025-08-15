@@ -37,11 +37,6 @@ export function AdminSidebar() {
       icon: LayoutDashboard,
     },
     {
-      title: 'Customers',
-      url: '/admin/customers',
-      icon: Building2,
-    },
-    {
       title: 'HSE Monitoring',
       url: '/admin/hse',
       icon: Shield,
@@ -55,6 +50,11 @@ export function AdminSidebar() {
       title: 'Invoices',
       url: '/admin/invoices',
       icon: FileText,
+    },
+    {
+      title: 'Customers',
+      url: '/admin/customers',
+      icon: Building2,
     },
     {
       title: 'Data Management',
