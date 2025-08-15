@@ -22,9 +22,9 @@ import {
   Truck, 
   FileText, 
   Database,
-  LogOut
+  LogOut,
+  Crown
 } from 'lucide-react';
-import pkbslLogo from '@/assets/pkbsl-logo.png';
 
 export function AdminSidebar() {
   const { logout, user } = useAuth();
@@ -84,11 +84,9 @@ export function AdminSidebar() {
     <Sidebar className="border-r border-sidebar-border bg-sidebar">
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-3 px-3 py-4">
-          <img 
-            src={pkbslLogo} 
-            alt="PKBSL Logo" 
-            className="h-14 w-auto object-contain"
-          />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
+            <Crown className="h-6 w-6 text-primary-foreground" />
+          </div>
           <div className="flex flex-col">
             <h2 className="text-sm font-semibold text-sidebar-foreground">
               PKBSL Admin

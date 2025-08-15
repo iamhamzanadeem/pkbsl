@@ -7,9 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Eye, EyeOff } from 'lucide-react';
+import { Building2, Shield, Eye, EyeOff } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import pkbslLogo from '@/assets/pkbsl-logo.png';
 
 export function LoginPage() {
   const { portal } = useParams<{ portal?: string }>();
@@ -71,11 +70,7 @@ export function LoginPage() {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center space-y-4">
             <div className="flex items-center justify-center">
-              <img 
-                src={pkbslLogo} 
-                alt="PKBSL Logo" 
-                className="h-16 w-auto object-contain"
-              />
+              <Building2 className="h-12 w-12 text-primary" />
             </div>
             
             <div>
@@ -259,11 +254,11 @@ export function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-4">
           <div className="flex items-center justify-center">
-            <img 
-              src={pkbslLogo} 
-              alt="PKBSL Logo" 
-              className="h-16 w-auto object-contain"
-            />
+            {isAdminLogin ? (
+              <Shield className="h-12 w-12 text-primary" />
+            ) : (
+              <Building2 className="h-12 w-12 text-primary" />
+            )}
           </div>
           
           <div>
