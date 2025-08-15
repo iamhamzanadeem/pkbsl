@@ -24,7 +24,7 @@ import {
   Database,
   LogOut
 } from 'lucide-react';
-const bslLogo = '/lovable-uploads/c36ec11c-a762-4401-9c4c-f410f3bfe0d6.png';
+import pkbslLogo from '@/assets/pkbsl-logo.png';
 
 export function AdminSidebar() {
   const { logout, user } = useAuth();
@@ -85,8 +85,8 @@ export function AdminSidebar() {
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-3 px-3 py-4">
           <img 
-            src={bslLogo} 
-            alt="BSL Logo" 
+            src={pkbslLogo} 
+            alt="PKBSL Logo" 
             className="h-14 w-auto object-contain"
           />
           <div className="flex flex-col">
