@@ -17,12 +17,13 @@ import {
   CheckCircle,
   AlertTriangle
 } from 'lucide-react';
+import { formatCurrencyPKR } from '@/lib/utils';
 
 const invoiceData = [
   {
     id: 'INV-2024-001',
     customer: 'Shell Pakistan',
-    amount: '$45,000',
+    amount: 12600000,
     dueDate: '2024-02-15',
     status: 'paid',
     shipments: 5,
@@ -31,7 +32,7 @@ const invoiceData = [
   {
     id: 'INV-2024-002',
     customer: 'PSO',
-    amount: '$32,000',
+    amount: 8960000,
     dueDate: '2024-02-20',
     status: 'pending',
     shipments: 3,
@@ -40,7 +41,7 @@ const invoiceData = [
   {
     id: 'INV-2024-003',
     customer: 'Total Parco',
-    amount: '$28,000',
+    amount: 7840000,
     dueDate: '2024-01-30',
     status: 'overdue',
     shipments: 4,
@@ -91,7 +92,7 @@ export function AdminInvoicesPage() {
             <DollarSign className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$2.1M</div>
+            <div className="text-2xl font-bold">{formatCurrencyPKR(588000000)}</div>
             <p className="text-xs text-muted-foreground">+15% from last month</p>
           </CardContent>
         </Card>
@@ -101,7 +102,7 @@ export function AdminInvoicesPage() {
             <Clock className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$186K</div>
+            <div className="text-2xl font-bold">{formatCurrencyPKR(52080000)}</div>
             <p className="text-xs text-muted-foreground">23 pending invoices</p>
           </CardContent>
         </Card>
@@ -111,7 +112,7 @@ export function AdminInvoicesPage() {
             <AlertTriangle className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$28K</div>
+            <div className="text-2xl font-bold">{formatCurrencyPKR(7840000)}</div>
             <p className="text-xs text-muted-foreground">5 overdue invoices</p>
           </CardContent>
         </Card>
@@ -206,7 +207,7 @@ export function AdminInvoicesPage() {
                     <TableRow key={invoice.id}>
                       <TableCell className="font-mono">{invoice.id}</TableCell>
                       <TableCell className="font-medium">{invoice.customer}</TableCell>
-                      <TableCell className="font-bold">{invoice.amount}</TableCell>
+                      <TableCell className="font-bold">{formatCurrencyPKR(invoice.amount)}</TableCell>
                       <TableCell>{invoice.issueDate}</TableCell>
                       <TableCell>{invoice.dueDate}</TableCell>
                       <TableCell>
@@ -240,7 +241,7 @@ export function AdminInvoicesPage() {
             <CardContent>
               <div className="text-center py-8 text-muted-foreground">
                 <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>23 pending invoices totaling $186,000</p>
+                <p>23 pending invoices totaling {formatCurrencyPKR(52080000)}</p>
                 <Button className="mt-4">Send Payment Reminders</Button>
               </div>
             </CardContent>
@@ -256,7 +257,7 @@ export function AdminInvoicesPage() {
             <CardContent>
               <div className="text-center py-8 text-muted-foreground">
                 <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-red-500" />
-                <p>5 overdue invoices totaling $28,000</p>
+                <p>5 overdue invoices totaling {formatCurrencyPKR(7840000)}</p>
                 <Button variant="destructive" className="mt-4">Escalate Collections</Button>
               </div>
             </CardContent>
@@ -272,7 +273,7 @@ export function AdminInvoicesPage() {
             <CardContent>
               <div className="text-center py-8 text-muted-foreground">
                 <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500" />
-                <p>156 paid invoices this month totaling $1.9M</p>
+                <p>156 paid invoices this month totaling {formatCurrencyPKR(532000000)}</p>
                 <Button variant="outline" className="mt-4">View Payment History</Button>
               </div>
             </CardContent>

@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Search, Download, Eye, FileText, CalendarDays, DollarSign } from 'lucide-react';
 import { usePortal } from '@/contexts/PortalContext';
+import { formatCurrencyPKR } from '@/lib/utils';
 
 interface Invoice {
   invoiceNo: string;
@@ -25,9 +26,9 @@ const mockInvoices: Invoice[] = [
   {
     invoiceNo: 'INV-2024-001',
     biltyNo: 'PKB-2024-001',
-    amount: 125000,
-    tax: 22500,
-    total: 147500,
+    amount: 3500000,
+    tax: 630000,
+    total: 4130000,
     status: 'Paid',
     dueDate: '2024-01-15',
     paidDate: '2024-01-12',
@@ -36,9 +37,9 @@ const mockInvoices: Invoice[] = [
   {
     invoiceNo: 'INV-2024-002',
     biltyNo: 'PKB-2024-002',
-    amount: 89000,
-    tax: 16020,
-    total: 105020,
+    amount: 2492000,
+    tax: 448560,
+    total: 2940560,
     status: 'Pending',
     dueDate: '2024-01-20',
     client: 'Siemens',
@@ -46,9 +47,9 @@ const mockInvoices: Invoice[] = [
   {
     invoiceNo: 'INV-2024-003',
     biltyNo: 'PKB-2024-003',
-    amount: 67500,
-    tax: 12150,
-    total: 79650,
+    amount: 1890000,
+    tax: 340200,
+    total: 2230200,
     status: 'Overdue',
     dueDate: '2024-01-10',
     client: 'UniLever',
@@ -97,13 +98,6 @@ export function InvoicesPage() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-PK', {
-      style: 'currency',
-      currency: 'PKR',
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
 
   const totalPending = filteredInvoices
     .filter(inv => inv.status === 'Pending' || inv.status === 'Overdue')
@@ -143,7 +137,7 @@ export function InvoicesPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">{formatCurrency(totalPending)}</div>
+            <div className="text-2xl font-bold text-destructive">{formatCurrencyPKR(totalPending)}</div>
             <p className="text-xs text-muted-foreground">
               {filteredInvoices.filter(inv => inv.status === 'Pending' || inv.status === 'Overdue').length} invoices
             </p>
@@ -156,7 +150,7 @@ export function InvoicesPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-success">{formatCurrency(totalPaid)}</div>
+            <div className="text-2xl font-bold text-success">{formatCurrencyPKR(totalPaid)}</div>
             <p className="text-xs text-muted-foreground">
               {filteredInvoices.filter(inv => inv.status === 'Paid').length} invoices
             </p>
@@ -182,7 +176,7 @@ export function InvoicesPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalPaid + totalPending)}</div>
+            <div className="text-2xl font-bold">{formatCurrencyPKR(totalPaid + totalPending)}</div>
             <p className="text-xs text-muted-foreground">total invoiced</p>
           </CardContent>
         </Card>
@@ -272,13 +266,13 @@ export function InvoicesPage() {
                       {invoice.biltyNo}
                     </TableCell>
                     <TableCell>
-                      {formatCurrency(invoice.amount)}
+                      {formatCurrencyPKR(invoice.amount)}
                     </TableCell>
                     <TableCell>
-                      {formatCurrency(invoice.tax)}
+                      {formatCurrencyPKR(invoice.tax)}
                     </TableCell>
                     <TableCell className="font-medium">
-                      {formatCurrency(invoice.total)}
+                      {formatCurrencyPKR(invoice.total)}
                     </TableCell>
                     <TableCell>
                       {getStatusBadge(invoice.status)}

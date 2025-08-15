@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Search, Filter, Download, Eye, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
+import { formatCurrencyPKR } from '@/lib/utils';
 
 const shipmentData = [
   {
@@ -13,7 +14,7 @@ const shipmentData = [
     origin: 'Karachi Port',
     destination: 'Lahore Depot',
     status: 'in-transit',
-    value: '$45,000',
+    value: 12600000,
     driver: 'Ahmed Khan',
     vehicle: 'TRK-001'
   },
@@ -23,7 +24,7 @@ const shipmentData = [
     origin: 'Port Qasim',
     destination: 'Islamabad Terminal',
     status: 'delivered',
-    value: '$32,000',
+    value: 8960000,
     driver: 'Muhammad Ali',
     vehicle: 'TRK-002'
   },
@@ -33,7 +34,7 @@ const shipmentData = [
     origin: 'Bin Qasim',
     destination: 'Faisalabad Hub',
     status: 'delayed',
-    value: '$28,000',
+    value: 7840000,
     driver: 'Hassan Ahmed',
     vehicle: 'TRK-003'
   }
@@ -102,7 +103,7 @@ export function AdminShipmentsPage() {
             <CardTitle className="text-sm font-medium">Total Value</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$2.1M</div>
+            <div className="text-2xl font-bold">{formatCurrencyPKR(588000000)}</div>
             <p className="text-xs text-muted-foreground">This month</p>
           </CardContent>
         </Card>
@@ -185,7 +186,7 @@ export function AdminShipmentsPage() {
                     </div>
                   </TableCell>
                   <TableCell>{getStatusBadge(shipment.status)}</TableCell>
-                  <TableCell className="font-medium">{shipment.value}</TableCell>
+                  <TableCell className="font-medium">{formatCurrencyPKR(shipment.value)}</TableCell>
                   <TableCell>{shipment.driver}</TableCell>
                   <TableCell className="font-mono">{shipment.vehicle}</TableCell>
                   <TableCell>
