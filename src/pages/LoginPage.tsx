@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Building2, Shield, Eye, EyeOff } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import truckImage from '@/assets/bsl-truck-bg.png';
+const truckImage = '/lovable-uploads/70717859-65c2-4617-b813-9968185c3392.png';
 
 export function LoginPage() {
   const { portal } = useParams<{ portal?: string }>();
