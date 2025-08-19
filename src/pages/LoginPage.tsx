@@ -84,12 +84,12 @@ export function LoginPage() {
             <Card className="w-full max-w-md glass-card">
           <CardHeader className="text-center space-y-4">
             <div className="flex items-center justify-center">
-              <Building2 className="h-12 w-12 text-primary" />
+              <img src="/lovable-uploads/7ff0d3db-95ae-48b1-b82a-386e924c14c9.png" alt="BSL Logo" className="h-12 w-auto" />
             </div>
             
             <div>
               <CardTitle className="text-2xl font-bold">
-                PKBSL Portal Login
+                BSL Portal Login
               </CardTitle>
               <CardDescription>
                 Select your portal and sign in
@@ -317,12 +317,12 @@ export function LoginPage() {
           <Card className="w-full max-w-md glass-card">
         <CardHeader className="text-center space-y-4">
           <div className="flex items-center justify-center">
-            {isAdminLogin ? <Shield className="h-12 w-12 text-primary" /> : <Building2 className="h-12 w-12 text-primary" />}
+            <img src="/lovable-uploads/7ff0d3db-95ae-48b1-b82a-386e924c14c9.png" alt="BSL Logo" className="h-12 w-auto" />
           </div>
           
           <div>
             <CardTitle className="text-2xl font-bold">
-              {portalConfig?.displayName || (isAdminLogin ? 'PKBSL Admin Portal' : 'PKBSL Customer Portal')}
+              {portalConfig?.displayName || (isAdminLogin ? 'BSL Admin Portal' : 'BSL Customer Portal')}
             </CardTitle>
             <CardDescription>
               Sign in to access your logistics dashboard
@@ -398,12 +398,12 @@ export function LoginPage() {
         <Card className="w-full max-w-md glass-card relative z-10">
           <CardHeader className="text-center space-y-4">
             <div className="flex items-center justify-center">
-              {isAdminLogin ? <Shield className="h-12 w-12 text-primary" /> : <Building2 className="h-12 w-12 text-primary" />}
+              <img src="/lovable-uploads/7ff0d3db-95ae-48b1-b82a-386e924c14c9.png" alt="BSL Logo" className="h-12 w-auto" />
             </div>
             
             <div>
               <CardTitle className="text-2xl font-bold">
-                {portalConfig?.displayName || (isAdminLogin ? 'PKBSL Admin Portal' : 'PKBSL Customer Portal')}
+                {portalConfig?.displayName || (isAdminLogin ? 'BSL Admin Portal' : 'BSL Customer Portal')}
               </CardTitle>
               <CardDescription>
                 Sign in to access your logistics dashboard
