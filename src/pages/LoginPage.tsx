@@ -10,6 +10,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Building2, Shield, Eye, EyeOff } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
+const truckImage = '/lovable-uploads/af5aa037-e6af-4c63-9780-d6451cff3f14.png';
+
 export function LoginPage() {
   const {
     portal
@@ -184,9 +186,10 @@ export function LoginPage() {
         </Card>
           </div>
           
-          {/* Right side - Brand section */}
+          {/* Right side - Truck background */}
           <div className="flex-1 relative bg-gradient-to-bl from-primary/10 to-primary/20">
             <div className="absolute inset-0 bg-gradient-to-l from-primary/5 to-transparent"></div>
+            <img src={truckImage} alt="BSL Logistics Truck" className="absolute right-0 top-1/2 -translate-y-1/2 h-auto max-h-[80vh] w-auto object-contain opacity-90" />
             <div className="absolute bottom-8 left-8 text-primary/80">
               <h2 className="text-3xl font-bold mb-2">PKBSL Logistics</h2>
               <p className="text-lg">Delivering Excellence Across Pakistan</p>
@@ -196,6 +199,9 @@ export function LoginPage() {
         
         {/* Mobile layout */}
         <div className="lg:hidden min-h-screen flex items-center justify-center p-4 relative">
+          <div className="absolute inset-0 opacity-10">
+            <img src={truckImage} alt="BSL Logistics Truck" className="w-full h-full object-cover" />
+          </div>
           <Card className="w-full max-w-md glass-card relative z-10">
             {/* ... keep existing card content ... */}
             <CardHeader className="text-center space-y-4">
@@ -378,9 +384,10 @@ export function LoginPage() {
           </Card>
         </div>
         
-        {/* Right side - Brand section */}
+        {/* Right side - Truck background */}
         <div className="flex-1 relative bg-gradient-to-bl from-primary/10 to-primary/20">
           <div className="absolute inset-0 bg-gradient-to-l from-primary/5 to-transparent"></div>
+          <img src={truckImage} alt="BSL Logistics Truck" className="absolute right-0 top-1/2 -translate-y-1/2 h-auto max-h-[80vh] w-auto object-contain opacity-90" />
           <div className="absolute bottom-8 left-8 text-primary/80">
             <h2 className="text-3xl font-bold mb-2">PKBSL Logistics</h2>
             <p className="text-lg">Delivering Excellence Across Pakistan</p>
@@ -390,6 +397,9 @@ export function LoginPage() {
       
       {/* Mobile layout */}
       <div className="lg:hidden min-h-screen flex items-center justify-center p-4 relative">
+        <div className="absolute inset-0 opacity-10">
+          <img src={truckImage} alt="BSL Logistics Truck" className="w-full h-full object-cover" />
+        </div>
         <Card className="w-full max-w-md glass-card relative z-10">
           <CardHeader className="text-center space-y-4">
             <div className="flex items-center justify-center">
