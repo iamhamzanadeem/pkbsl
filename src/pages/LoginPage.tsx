@@ -286,7 +286,11 @@ export function LoginPage() {
             {/* ... keep existing card content ... */}
             <CardHeader className="text-center space-y-4">
               <div className="flex items-center justify-center">
-                <Building2 className="h-12 w-12 text-primary" />
+                <img 
+                  src="/lovable-uploads/7ff0d3db-95ae-48b1-b82a-386e924c14c9.png" 
+                  alt="BSL Logo" 
+                  className="h-12 w-auto"
+                />
               </div>
               
               <div>
