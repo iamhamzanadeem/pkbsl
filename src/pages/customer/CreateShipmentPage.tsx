@@ -15,6 +15,7 @@ import { ProductForm, Product } from "@/components/shipment/ProductForm";
 import { ProductSummary } from "@/components/shipment/ProductSummary";
 import { generateBiltyPDF } from "@/utils/pdfGenerator";
 import { generateQRCode } from "@/utils/qrGenerator";
+import { selectOptimalContainer, ContainerSelectionResult } from "@/utils/containerSelection";
 
 interface ShipmentData {
   products: Product[];
@@ -26,11 +27,8 @@ interface ShipmentData {
 }
 
 interface StuffingPlan {
-  containerType: string;
-  utilization: number;
+  recommended: ContainerSelectionResult;
   arrangement: string;
-  maxCartons: number;
-  estimatedCost: number;
   productBreakdown: {
     productCode: string;
     cartons: number;
@@ -64,7 +62,7 @@ export function CreateShipmentPage() {
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
   const [isCalculating, setIsCalculating] = useState(false);
 
-  // Mock calculation function for multiple products
+  // Enhanced calculation function with optimal container selection
   const calculateStuffingPlan = (data: ShipmentData): StuffingPlan => {
     const validProducts = data.products.filter(p => p.productCode && p.cartons > 0);
     
@@ -72,37 +70,10 @@ export function CreateShipmentPage() {
       throw new Error("No valid products found");
     }
 
-    const totalVolume = validProducts.reduce((sum, product) => {
-      return sum + (product.cartons * (product.dimensions.length * product.dimensions.width * product.dimensions.height) / 1000000);
-    }, 0);
-
-    const totalWeight = validProducts.reduce((sum, product) => {
-      return sum + (product.cartons * product.weightPerCarton);
-    }, 0);
-
+    // Use the enhanced container selection algorithm
+    const containerSelection = selectOptimalContainer(validProducts);
+    
     const totalCartons = validProducts.reduce((sum, product) => sum + product.cartons, 0);
-
-    // Mock container selection logic
-    let containerType = "20ft Standard Container";
-    let maxCartons = 1000;
-    let estimatedCost = 50000;
-
-    // Multi-product complexity factor
-    const complexityFactor = validProducts.length > 1 ? 1.15 : 1;
-
-    if (totalVolume > 25 || totalWeight > 15000) {
-      containerType = "40ft High Cube Container";
-      maxCartons = 2000;
-      estimatedCost = 85000;
-    } else if (totalVolume > 15 || totalWeight > 8000) {
-      containerType = "20ft High Cube Container";
-      maxCartons = 1200;
-      estimatedCost = 65000;
-    }
-
-    estimatedCost = Math.round(estimatedCost * complexityFactor);
-
-    const utilization = Math.min((totalVolume / (containerType.includes("40ft") ? 67 : 33)) * 100, 100);
     
     const productBreakdown = validProducts.map(product => ({
       productCode: product.productCode,
@@ -112,13 +83,10 @@ export function CreateShipmentPage() {
     }));
     
     return {
-      containerType,
-      utilization: Math.round(utilization),
+      recommended: containerSelection,
       arrangement: validProducts.length > 1 
         ? `Mixed loading: ${validProducts.length} product types`
         : `${Math.ceil(Math.sqrt(totalCartons))}x${Math.ceil(Math.sqrt(totalCartons))} grid layout`,
-      maxCartons,
-      estimatedCost,
       productBreakdown
     };
   };
@@ -231,7 +199,14 @@ export function CreateShipmentPage() {
     await generateBiltyPDF({
       biltyNumber,
       formData,
-      stuffingPlan,
+      stuffingPlan: {
+        containerType: stuffingPlan.recommended.recommendedOption.container.displayName,
+        utilization: stuffingPlan.recommended.recommendedOption.utilization.volume,
+        arrangement: stuffingPlan.arrangement,
+        maxCartons: 1000, // This could be calculated based on container capacity
+        estimatedCost: stuffingPlan.recommended.recommendedOption.container.costPerContainer,
+        productBreakdown: stuffingPlan.productBreakdown
+      },
       eta,
       qrCodeDataUrl,
       clientCode: "SHELL001"
@@ -400,11 +375,15 @@ export function CreateShipmentPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Container Type:</span>
-                    <Badge variant="secondary">{stuffingPlan.containerType}</Badge>
+                    <Badge variant="secondary">{stuffingPlan.recommended.recommendedOption.container.displayName}</Badge>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Utilization:</span>
-                    <span className="font-medium">{stuffingPlan.utilization}%</span>
+                    <span className="text-sm text-muted-foreground">Volume Utilization:</span>
+                    <span className="font-medium">{stuffingPlan.recommended.recommendedOption.utilization.volume}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Weight Utilization:</span>
+                    <span className="font-medium">{stuffingPlan.recommended.recommendedOption.utilization.weight}%</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Arrangement:</span>
@@ -412,8 +391,60 @@ export function CreateShipmentPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Estimated Cost:</span>
-                    <span className="font-medium">PKR {stuffingPlan.estimatedCost.toLocaleString()}</span>
+                    <span className="font-medium">PKR {stuffingPlan.recommended.recommendedOption.container.costPerContainer.toLocaleString()}</span>
                   </div>
+                  
+                  <Separator />
+                  
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium">Recommendation Reason:</div>
+                    <p className="text-sm text-muted-foreground">{stuffingPlan.recommended.recommendedOption.reasoning}</p>
+                    
+                    {stuffingPlan.recommended.recommendedOption.pros.length > 0 && (
+                      <div className="space-y-1">
+                        <div className="text-xs font-medium text-green-600">Advantages:</div>
+                        <ul className="text-xs text-muted-foreground space-y-0.5">
+                          {stuffingPlan.recommended.recommendedOption.pros.map((pro, index) => (
+                            <li key={index}>• {pro}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    
+                    {stuffingPlan.recommended.recommendedOption.cons.length > 0 && (
+                      <div className="space-y-1">
+                        <div className="text-xs font-medium text-amber-600">Considerations:</div>
+                        <ul className="text-xs text-muted-foreground space-y-0.5">
+                          {stuffingPlan.recommended.recommendedOption.cons.map((con, index) => (
+                            <li key={index}>• {con}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {stuffingPlan.recommended.allOptions.filter(opt => opt.canFit && opt.container.type !== stuffingPlan.recommended.recommendedOption.container.type).length > 0 && (
+                    <>
+                      <Separator />
+                      <div className="space-y-2">
+                        <div className="text-sm font-medium">Alternative Options:</div>
+                        {stuffingPlan.recommended.allOptions
+                          .filter(opt => opt.canFit && opt.container.type !== stuffingPlan.recommended.recommendedOption.container.type)
+                          .slice(0, 2)
+                          .map((option, index) => (
+                            <div key={index} className="p-2 border rounded-lg space-y-1">
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm font-medium">{option.container.displayName}</span>
+                                <span className="text-xs text-muted-foreground">Score: {option.efficiency.overallScore}/100</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                Vol: {option.utilization.volume}% | Cost: PKR {option.container.costPerContainer.toLocaleString()}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </>
+                  )}
                 </div>
                 
                 {stuffingPlan.productBreakdown.length > 1 && (
