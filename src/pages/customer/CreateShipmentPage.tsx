@@ -8,14 +8,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CalendarDays, Package, MapPin, Truck, Clock, Download, QrCode, Plus } from "lucide-react";
+import { CalendarDays, Package, MapPin, Truck, Clock, Download, QrCode, Plus, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { ShipmentMap } from "@/components/shipment/ShipmentMap";
 import { ProductForm, Product } from "@/components/shipment/ProductForm";
 import { ProductSummary } from "@/components/shipment/ProductSummary";
+import { TruckAssignment } from "@/components/shipment/TruckAssignment";
 import { generateBiltyPDF } from "@/utils/pdfGenerator";
 import { generateQRCode } from "@/utils/qrGenerator";
 import { selectOptimalContainer, ContainerSelectionResult } from "@/utils/containerSelection";
+import { selectOptimalTruck, TruckSelectionResult } from "@/utils/truckSelection";
+import { mockTrucks } from "@/data/mockTrucks";
+import { Truck as TruckType } from "@/types/truck";
 
 interface ShipmentData {
   products: Product[];
@@ -57,6 +61,8 @@ export function CreateShipmentPage() {
   });
 
   const [stuffingPlan, setStuffingPlan] = useState<StuffingPlan | null>(null);
+  const [truckSelection, setTruckSelection] = useState<TruckSelectionResult | null>(null);
+  const [selectedTruck, setSelectedTruck] = useState<TruckType | null>(null);
   const [eta, setETA] = useState<string>("");
   const [biltyNumber, setBiltyNumber] = useState<string>("");
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
@@ -157,6 +163,21 @@ export function CreateShipmentPage() {
       const plan = calculateStuffingPlan(formData);
       setStuffingPlan(plan);
       
+      // Select optimal truck based on container and route
+      const truckOptions = selectOptimalTruck(
+        mockTrucks,
+        plan.recommended,
+        formData.origin,
+        formData.pickupDate,
+        formData.pickupTime
+      );
+      setTruckSelection(truckOptions);
+      
+      // Auto-select recommended truck if available
+      if (truckOptions.recommendedTruck) {
+        setSelectedTruck(truckOptions.recommendedTruck.truck);
+      }
+      
       if (formData.pickupDate && formData.pickupTime) {
         const calculatedETA = calculateETA(formData.origin, formData.destination, formData.pickupDate, formData.pickupTime);
         setETA(calculatedETA);
@@ -190,27 +211,52 @@ export function CreateShipmentPage() {
     }
   };
 
+  const handleTruckSelect = (truckId: string) => {
+    const truck = mockTrucks.find(t => t.truckId === truckId);
+    if (truck) {
+      setSelectedTruck(truck);
+      toast.success(`Truck ${truckId} assigned to shipment`);
+    }
+  };
+
+  const handleContactDriver = (truck: TruckType) => {
+    toast.info(`Calling ${truck.driverName} at ${truck.driverContact}`);
+    // In a real app, this would initiate a phone call or open a contact dialog
+  };
+
   const handleGeneratePDF = async () => {
     if (!stuffingPlan || !biltyNumber) {
       toast.error("Please calculate stuffing plan first");
       return;
     }
 
-    await generateBiltyPDF({
+    const pdfData = {
       biltyNumber,
       formData,
       stuffingPlan: {
         containerType: stuffingPlan.recommended.recommendedOption.container.displayName,
         utilization: stuffingPlan.recommended.recommendedOption.utilization.volume,
         arrangement: stuffingPlan.arrangement,
-        maxCartons: 1000, // This could be calculated based on container capacity
+        maxCartons: 1000,
         estimatedCost: stuffingPlan.recommended.recommendedOption.container.costPerContainer,
         productBreakdown: stuffingPlan.productBreakdown
       },
       eta,
       qrCodeDataUrl,
-      clientCode: "SHELL001"
-    });
+      clientCode: "SHELL001",
+      // Include truck details if assigned
+      ...(selectedTruck && {
+        truck: {
+          truckId: selectedTruck.truckId,
+          driverName: selectedTruck.driverName,
+          driverContact: selectedTruck.driverContact,
+          plateNumber: selectedTruck.plateNumber,
+          truckType: selectedTruck.truckType
+        }
+      })
+    };
+
+    await generateBiltyPDF(pdfData);
     
     toast.success("Bilty PDF generated successfully!");
   };
@@ -336,6 +382,16 @@ export function CreateShipmentPage() {
             </CardContent>
           </Card>
 
+          {/* Truck Assignment */}
+          {truckSelection && (
+            <TruckAssignment
+              truckSelection={truckSelection}
+              selectedTruckId={selectedTruck?.truckId || null}
+              onTruckSelect={handleTruckSelect}
+              onContactDriver={handleContactDriver}
+            />
+          )}
+
           {/* Action Buttons */}
           <div className="flex gap-4">
             <Button 
@@ -355,6 +411,17 @@ export function CreateShipmentPage() {
               >
                 <Download className="h-4 w-4" />
                 Generate PDF
+              </Button>
+            )}
+            
+            {selectedTruck && (
+              <Button 
+                onClick={() => handleContactDriver(selectedTruck)}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <Phone className="h-4 w-4" />
+                Contact Driver
               </Button>
             )}
           </div>
@@ -507,6 +574,55 @@ export function CreateShipmentPage() {
                     </div>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Assigned Truck Information */}
+          {selectedTruck && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Truck className="h-5 w-5" />
+                  Assigned Truck
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Truck ID:</span>
+                  <Badge variant="outline">{selectedTruck.truckId}</Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Driver:</span>
+                  <span className="font-medium">{selectedTruck.driverName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Contact:</span>
+                  <span className="font-medium">{selectedTruck.driverContact}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Plate Number:</span>
+                  <span className="font-medium">{selectedTruck.plateNumber}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Type:</span>
+                  <span className="font-medium">{selectedTruck.truckType}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Current Location:</span>
+                  <span className="font-medium">{selectedTruck.currentLocation}</span>
+                </div>
+                
+                <Separator />
+                
+                <Button 
+                  variant="outline" 
+                  className="w-full flex items-center gap-2"
+                  onClick={() => handleContactDriver(selectedTruck)}
+                >
+                  <Phone className="h-4 w-4" />
+                  Contact Driver
+                </Button>
               </CardContent>
             </Card>
           )}
