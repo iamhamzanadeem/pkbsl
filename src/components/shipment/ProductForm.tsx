@@ -1,9 +1,15 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Package, Trash2, Copy } from "lucide-react";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Package, Trash2, Copy, Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { standardProducts, getProductByCode, searchProducts } from "@/data/standardProducts";
+
 
 export interface Product {
   id: string;
@@ -28,8 +34,23 @@ interface ProductFormProps {
 }
 
 export function ProductForm({ product, index, onUpdate, onRemove, onDuplicate, canRemove }: ProductFormProps) {
+  const [open, setOpen] = useState(false);
   const updateProduct = (field: keyof Product, value: any) => {
     onUpdate({ ...product, [field]: value });
+  };
+
+  const handleProductSelect = (productCode: string) => {
+    const standardProduct = getProductByCode(productCode);
+    if (standardProduct) {
+      onUpdate({
+        ...product,
+        productCode: standardProduct.code,
+        dimensions: standardProduct.dimensions,
+        weightPerCarton: standardProduct.weightPerCarton,
+        description: standardProduct.description
+      });
+    }
+    setOpen(false);
   };
 
   const updateDimension = (dimension: keyof Product['dimensions'], value: number) => {
@@ -77,12 +98,48 @@ export function ProductForm({ product, index, onUpdate, onRemove, onDuplicate, c
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor={`productCode-${product.id}`}>Product Code *</Label>
-            <Input
-              id={`productCode-${product.id}`}
-              value={product.productCode}
-              onChange={(e) => updateProduct('productCode', e.target.value)}
-              placeholder="e.g., SHELL-OIL-001"
-            />
+            <Popover open={open} onOpenChange={setOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={open}
+                  className="w-full justify-between"
+                >
+                  {product.productCode || "Select product code..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-full p-0 z-50 bg-background border shadow-lg">
+                <Command>
+                  <CommandInput placeholder="Search products..." />
+                  <CommandList>
+                    <CommandEmpty>No product found.</CommandEmpty>
+                    <CommandGroup>
+                      {standardProducts.map((standardProduct) => (
+                        <CommandItem
+                          key={standardProduct.code}
+                          value={standardProduct.code}
+                          onSelect={() => handleProductSelect(standardProduct.code)}
+                          className="cursor-pointer"
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              product.productCode === standardProduct.code ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <div className="flex flex-col">
+                            <span className="font-medium">{standardProduct.code}</span>
+                            <span className="text-sm text-muted-foreground">{standardProduct.name}</span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="space-y-2">
             <Label htmlFor={`cartons-${product.id}`}>Number of Cartons *</Label>
@@ -104,20 +161,28 @@ export function ProductForm({ product, index, onUpdate, onRemove, onDuplicate, c
               type="number"
               value={product.dimensions.length || ""}
               onChange={(e) => updateDimension('length', parseFloat(e.target.value) || 0)}
+              disabled={!!getProductByCode(product.productCode)}
             />
             <Input
               placeholder="Width"
               type="number"
               value={product.dimensions.width || ""}
               onChange={(e) => updateDimension('width', parseFloat(e.target.value) || 0)}
+              disabled={!!getProductByCode(product.productCode)}
             />
             <Input
               placeholder="Height"
               type="number"
               value={product.dimensions.height || ""}
               onChange={(e) => updateDimension('height', parseFloat(e.target.value) || 0)}
+              disabled={!!getProductByCode(product.productCode)}
             />
           </div>
+          {getProductByCode(product.productCode) && (
+            <p className="text-xs text-muted-foreground">
+              Dimensions are auto-filled from standard product catalog
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -129,7 +194,13 @@ export function ProductForm({ product, index, onUpdate, onRemove, onDuplicate, c
               value={product.weightPerCarton || ""}
               onChange={(e) => updateProduct('weightPerCarton', parseFloat(e.target.value) || 0)}
               placeholder="e.g., 25.5"
+              disabled={!!getProductByCode(product.productCode)}
             />
+            {getProductByCode(product.productCode) && (
+              <p className="text-xs text-muted-foreground">
+                Weight is auto-filled from standard product catalog
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor={`description-${product.id}`}>Description</Label>
@@ -138,7 +209,13 @@ export function ProductForm({ product, index, onUpdate, onRemove, onDuplicate, c
               value={product.description}
               onChange={(e) => updateProduct('description', e.target.value)}
               placeholder="Product description"
+              disabled={!!getProductByCode(product.productCode)}
             />
+            {getProductByCode(product.productCode) && (
+              <p className="text-xs text-muted-foreground">
+                Description is auto-filled from standard product catalog
+              </p>
+            )}
           </div>
         </div>
 
