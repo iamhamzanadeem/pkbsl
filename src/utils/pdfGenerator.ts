@@ -1,16 +1,22 @@
 import jsPDF from 'jspdf';
 
+interface Product {
+  id: string;
+  productCode: string;
+  cartons: number;
+  dimensions: {
+    length: number;
+    width: number;
+    height: number;
+  };
+  weightPerCarton: number;
+  description: string;
+}
+
 interface BiltyData {
   biltyNumber: string;
   formData: {
-    productCode: string;
-    cartons: number;
-    dimensions: {
-      length: number;
-      width: number;
-      height: number;
-    };
-    weightPerCarton: number;
+    products: Product[];
     origin: string;
     destination: string;
     pickupDate: string;
@@ -23,6 +29,12 @@ interface BiltyData {
     arrangement: string;
     maxCartons: number;
     estimatedCost: number;
+    productBreakdown: {
+      productCode: string;
+      cartons: number;
+      weight: number;
+      volume: number;
+    }[];
   };
   eta: string;
   qrCodeDataUrl: string;
@@ -56,15 +68,39 @@ export async function generateBiltyPDF(data: BiltyData) {
   pdf.setTextColor(0, 0, 0);
   
   let yPos = 105;
-  pdf.text(`Product Code: ${data.formData.productCode}`, 20, yPos);
-  pdf.text(`Number of Cartons: ${data.formData.cartons}`, 120, yPos);
+  const validProducts = data.formData.products.filter(p => p.productCode && p.cartons > 0);
   
-  yPos += 15;
-  pdf.text(`Dimensions per Carton: ${data.formData.dimensions.length} x ${data.formData.dimensions.width} x ${data.formData.dimensions.height} cm`, 20, yPos);
+  // Products table header
+  pdf.text('Product Code', 20, yPos);
+  pdf.text('Cartons', 80, yPos);
+  pdf.text('Dimensions (cm)', 110, yPos);
+  pdf.text('Weight/Carton', 160, yPos);
   
-  yPos += 15;
-  pdf.text(`Weight per Carton: ${data.formData.weightPerCarton} kg`, 20, yPos);
-  pdf.text(`Total Weight: ${(data.formData.cartons * data.formData.weightPerCarton).toFixed(2)} kg`, 120, yPos);
+  yPos += 10;
+  pdf.line(20, yPos, 190, yPos); // Header line
+  yPos += 5;
+  
+  // Product details
+  validProducts.forEach((product) => {
+    pdf.text(product.productCode, 20, yPos);
+    pdf.text(product.cartons.toString(), 80, yPos);
+    pdf.text(`${product.dimensions.length}×${product.dimensions.width}×${product.dimensions.height}`, 110, yPos);
+    pdf.text(`${product.weightPerCarton} kg`, 160, yPos);
+    yPos += 12;
+  });
+  
+  // Totals
+  yPos += 5;
+  pdf.line(20, yPos, 190, yPos);
+  yPos += 10;
+  
+  const totalCartons = validProducts.reduce((sum, p) => sum + p.cartons, 0);
+  const totalWeight = validProducts.reduce((sum, p) => sum + (p.cartons * p.weightPerCarton), 0);
+  
+  pdf.setFontSize(9);
+  pdf.text(`Total Products: ${validProducts.length}`, 20, yPos);
+  pdf.text(`Total Cartons: ${totalCartons}`, 80, yPos);
+  pdf.text(`Total Weight: ${totalWeight.toFixed(2)} kg`, 140, yPos);
   
   // Route Information
   yPos += 25;

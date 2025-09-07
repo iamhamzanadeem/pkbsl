@@ -8,21 +8,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CalendarDays, Package, MapPin, Truck, Clock, Download, QrCode } from "lucide-react";
+import { CalendarDays, Package, MapPin, Truck, Clock, Download, QrCode, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { ShipmentMap } from "@/components/shipment/ShipmentMap";
+import { ProductForm, Product } from "@/components/shipment/ProductForm";
+import { ProductSummary } from "@/components/shipment/ProductSummary";
 import { generateBiltyPDF } from "@/utils/pdfGenerator";
 import { generateQRCode } from "@/utils/qrGenerator";
 
 interface ShipmentData {
-  productCode: string;
-  cartons: number;
-  dimensions: {
-    length: number;
-    width: number;
-    height: number;
-  };
-  weightPerCarton: number;
+  products: Product[];
   origin: string;
   destination: string;
   pickupDate: string;
@@ -36,14 +31,26 @@ interface StuffingPlan {
   arrangement: string;
   maxCartons: number;
   estimatedCost: number;
+  productBreakdown: {
+    productCode: string;
+    cartons: number;
+    weight: number;
+    volume: number;
+  }[];
 }
+
+const createEmptyProduct = (): Product => ({
+  id: crypto.randomUUID(),
+  productCode: "",
+  cartons: 0,
+  dimensions: { length: 0, width: 0, height: 0 },
+  weightPerCarton: 0,
+  description: ""
+});
 
 export function CreateShipmentPage() {
   const [formData, setFormData] = useState<ShipmentData>({
-    productCode: "",
-    cartons: 0,
-    dimensions: { length: 0, width: 0, height: 0 },
-    weightPerCarton: 0,
+    products: [createEmptyProduct()],
     origin: "",
     destination: "",
     pickupDate: "",
@@ -57,15 +64,31 @@ export function CreateShipmentPage() {
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
   const [isCalculating, setIsCalculating] = useState(false);
 
-  // Mock calculation function
+  // Mock calculation function for multiple products
   const calculateStuffingPlan = (data: ShipmentData): StuffingPlan => {
-    const totalVolume = data.cartons * (data.dimensions.length * data.dimensions.width * data.dimensions.height) / 1000000; // m³
-    const totalWeight = data.cartons * data.weightPerCarton;
+    const validProducts = data.products.filter(p => p.productCode && p.cartons > 0);
+    
+    if (validProducts.length === 0) {
+      throw new Error("No valid products found");
+    }
+
+    const totalVolume = validProducts.reduce((sum, product) => {
+      return sum + (product.cartons * (product.dimensions.length * product.dimensions.width * product.dimensions.height) / 1000000);
+    }, 0);
+
+    const totalWeight = validProducts.reduce((sum, product) => {
+      return sum + (product.cartons * product.weightPerCarton);
+    }, 0);
+
+    const totalCartons = validProducts.reduce((sum, product) => sum + product.cartons, 0);
 
     // Mock container selection logic
     let containerType = "20ft Standard Container";
     let maxCartons = 1000;
     let estimatedCost = 50000;
+
+    // Multi-product complexity factor
+    const complexityFactor = validProducts.length > 1 ? 1.15 : 1;
 
     if (totalVolume > 25 || totalWeight > 15000) {
       containerType = "40ft High Cube Container";
@@ -77,14 +100,26 @@ export function CreateShipmentPage() {
       estimatedCost = 65000;
     }
 
+    estimatedCost = Math.round(estimatedCost * complexityFactor);
+
     const utilization = Math.min((totalVolume / (containerType.includes("40ft") ? 67 : 33)) * 100, 100);
+    
+    const productBreakdown = validProducts.map(product => ({
+      productCode: product.productCode,
+      cartons: product.cartons,
+      weight: product.cartons * product.weightPerCarton,
+      volume: product.cartons * (product.dimensions.length * product.dimensions.width * product.dimensions.height) / 1000000
+    }));
     
     return {
       containerType,
       utilization: Math.round(utilization),
-      arrangement: `${Math.ceil(Math.sqrt(data.cartons))}x${Math.ceil(Math.sqrt(data.cartons))} grid layout`,
+      arrangement: validProducts.length > 1 
+        ? `Mixed loading: ${validProducts.length} product types`
+        : `${Math.ceil(Math.sqrt(totalCartons))}x${Math.ceil(Math.sqrt(totalCartons))} grid layout`,
       maxCartons,
-      estimatedCost
+      estimatedCost,
+      productBreakdown
     };
   };
 
@@ -107,44 +142,84 @@ export function CreateShipmentPage() {
     return etaDateTime.toLocaleString();
   };
 
+  // Product management functions
+  const addProduct = () => {
+    setFormData(prev => ({
+      ...prev,
+      products: [...prev.products, createEmptyProduct()]
+    }));
+  };
+
+  const updateProduct = (updatedProduct: Product) => {
+    setFormData(prev => ({
+      ...prev,
+      products: prev.products.map(p => p.id === updatedProduct.id ? updatedProduct : p)
+    }));
+  };
+
+  const removeProduct = (productId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      products: prev.products.filter(p => p.id !== productId)
+    }));
+  };
+
+  const duplicateProduct = (product: Product) => {
+    const newProduct = { ...product, id: crypto.randomUUID() };
+    setFormData(prev => ({
+      ...prev,
+      products: [...prev.products, newProduct]
+    }));
+  };
+
   const handleCalculate = async () => {
-    if (!formData.productCode || !formData.cartons || !formData.origin || !formData.destination) {
-      toast.error("Please fill in all required fields");
+    const validProducts = formData.products.filter(p => p.productCode && p.cartons > 0);
+    
+    if (validProducts.length === 0 || !formData.origin || !formData.destination) {
+      toast.error("Please add at least one product and select origin/destination");
       return;
     }
 
     setIsCalculating(true);
     
-    // Simulate calculation delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const plan = calculateStuffingPlan(formData);
-    setStuffingPlan(plan);
-    
-    if (formData.pickupDate && formData.pickupTime) {
-      const calculatedETA = calculateETA(formData.origin, formData.destination, formData.pickupDate, formData.pickupTime);
-      setETA(calculatedETA);
+    try {
+      // Simulate calculation delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      const plan = calculateStuffingPlan(formData);
+      setStuffingPlan(plan);
+      
+      if (formData.pickupDate && formData.pickupTime) {
+        const calculatedETA = calculateETA(formData.origin, formData.destination, formData.pickupDate, formData.pickupTime);
+        setETA(calculatedETA);
+      }
+      
+      // Generate bilty number
+      const biltyNo = `BSL-${Date.now().toString().slice(-6)}`;
+      setBiltyNumber(biltyNo);
+      
+      // Generate QR code with all products
+      const qrData = {
+        biltyNo,
+        clientCode: "SHELL001",
+        products: validProducts.map(p => ({
+          code: p.productCode,
+          cartons: p.cartons,
+          weight: p.cartons * p.weightPerCarton
+        })),
+        origin: formData.origin,
+        destination: formData.destination
+      };
+      
+      const qrCodeUrl = await generateQRCode(JSON.stringify(qrData));
+      setQrCodeDataUrl(qrCodeUrl);
+      
+      toast.success("Stuffing plan calculated successfully!");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Calculation failed");
+    } finally {
+      setIsCalculating(false);
     }
-    
-    // Generate bilty number
-    const biltyNo = `BSL-${Date.now().toString().slice(-6)}`;
-    setBiltyNumber(biltyNo);
-    
-    // Generate QR code
-    const qrData = {
-      biltyNo,
-      clientCode: "SHELL001",
-      productCode: formData.productCode,
-      cartons: formData.cartons,
-      origin: formData.origin,
-      destination: formData.destination
-    };
-    
-    const qrCodeUrl = await generateQRCode(JSON.stringify(qrData));
-    setQrCodeDataUrl(qrCodeUrl);
-    
-    setIsCalculating(false);
-    toast.success("Stuffing plan calculated successfully!");
   };
 
   const handleGeneratePDF = async () => {
@@ -181,83 +256,33 @@ export function CreateShipmentPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Form Section */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Product Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
-                Product Information
-              </CardTitle>
-              <CardDescription>Enter product details and specifications</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="productCode">Product Code *</Label>
-                  <Input
-                    id="productCode"
-                    value={formData.productCode}
-                    onChange={(e) => setFormData(prev => ({ ...prev, productCode: e.target.value }))}
-                    placeholder="e.g., SHELL-OIL-001"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="cartons">Number of Cartons *</Label>
-                  <Input
-                    id="cartons"
-                    type="number"
-                    value={formData.cartons || ""}
-                    onChange={(e) => setFormData(prev => ({ ...prev, cartons: parseInt(e.target.value) || 0 }))}
-                    placeholder="e.g., 100"
-                  />
-                </div>
+          {/* Products Section */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">Products</h2>
+                <p className="text-sm text-muted-foreground">Add one or more products to this shipment</p>
               </div>
-
-              <div className="space-y-2">
-                <Label>Dimensions per Carton (cm) *</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  <Input
-                    placeholder="Length"
-                    type="number"
-                    value={formData.dimensions.length || ""}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      dimensions: { ...prev.dimensions, length: parseFloat(e.target.value) || 0 }
-                    }))}
-                  />
-                  <Input
-                    placeholder="Width"
-                    type="number"
-                    value={formData.dimensions.width || ""}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      dimensions: { ...prev.dimensions, width: parseFloat(e.target.value) || 0 }
-                    }))}
-                  />
-                  <Input
-                    placeholder="Height"
-                    type="number"
-                    value={formData.dimensions.height || ""}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      dimensions: { ...prev.dimensions, height: parseFloat(e.target.value) || 0 }
-                    }))}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="weight">Weight per Carton (kg) *</Label>
-                <Input
-                  id="weight"
-                  type="number"
-                  value={formData.weightPerCarton || ""}
-                  onChange={(e) => setFormData(prev => ({ ...prev, weightPerCarton: parseFloat(e.target.value) || 0 }))}
-                  placeholder="e.g., 25.5"
-                />
-              </div>
-            </CardContent>
-          </Card>
+              <Button onClick={addProduct} variant="outline" className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Add Product
+              </Button>
+            </div>
+            
+            {formData.products.map((product, index) => (
+              <ProductForm
+                key={product.id}
+                product={product}
+                index={index}
+                onUpdate={updateProduct}
+                onRemove={removeProduct}
+                onDuplicate={duplicateProduct}
+                canRemove={formData.products.length > 1}
+              />
+            ))}
+            
+            <ProductSummary products={formData.products} />
+          </div>
 
           {/* Route Information */}
           <Card>
@@ -390,6 +415,28 @@ export function CreateShipmentPage() {
                     <span className="font-medium">PKR {stuffingPlan.estimatedCost.toLocaleString()}</span>
                   </div>
                 </div>
+                
+                {stuffingPlan.productBreakdown.length > 1 && (
+                  <>
+                    <Separator />
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium">Product Distribution:</div>
+                      {stuffingPlan.productBreakdown.map((product, index) => (
+                        <div key={index} className="flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground">{product.productCode}</span>
+                          <div className="flex gap-1">
+                            <Badge variant="outline" className="text-xs">
+                              {product.cartons} cartons
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {product.weight.toFixed(1)} kg
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
                 
                 <Separator />
                 
