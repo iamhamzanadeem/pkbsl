@@ -12,6 +12,7 @@ import { CustomerDashboard } from "@/pages/customer/CustomerDashboard";
 import { HSEPage } from "@/pages/customer/HSEPage";
 import { ShipmentsPage } from "@/pages/customer/ShipmentsPage";
 import { InvoicesPage } from "@/pages/customer/InvoicesPage";
+import { CreateShipmentPage } from "@/pages/customer/CreateShipmentPage";
 import { AdminDashboard } from "@/pages/admin/AdminDashboard";
 import { AdminShipmentsPage } from "@/pages/admin/AdminShipmentsPage";
 import { AdminHSEPage } from "@/pages/admin/AdminHSEPage";
@@ -65,6 +66,7 @@ const App = () => (
                       <Route path="dashboard" element={<CustomerDashboard />} />
                       <Route path="hse" element={<HSEPage />} />
                       <Route path="shipments" element={<ShipmentsPage />} />
+                      <Route path="create-shipment" element={<CreateShipmentPage />} />
                       <Route path="invoices" element={<InvoicesPage />} />
                       <Route path="*" element={<Navigate to="/customer-portal/dashboard" replace />} />
                     </Routes>
