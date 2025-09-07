@@ -62,7 +62,24 @@ function TruckOptionCard({
         </div>
         
         <div className="text-right space-y-1">
-          {getTruckStatusBadge(option.truck.status)}
+          <div className="flex items-center gap-1 justify-end">
+            {getTruckStatusBadge(option.truck.status)}
+            {option.score >= 60 && (
+              <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
+                Perfect Match
+              </Badge>
+            )}
+            {option.score >= 40 && option.score < 60 && (
+              <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800">
+                Good Option
+              </Badge>
+            )}
+            {option.score < 40 && (
+              <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-800">
+                Needs Approval
+              </Badge>
+            )}
+          </div>
           <div className="text-sm font-medium">Score: {Math.round(option.score)}/100</div>
         </div>
       </div>

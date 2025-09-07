@@ -20,14 +20,24 @@ export interface TruckSelectionResult {
   availableTrucks: number;
 }
 
-// Container-Truck compatibility matrix
+// Container-Truck compatibility matrix - matches container displayNames
 const CONTAINER_TRUCK_COMPATIBILITY: Record<string, TruckType[]> = {
-  "20ft Standard": ["Container Truck", "Flatbed"],
-  "20ft High Cube": ["Container Truck"],
-  "40ft Standard": ["Container Truck", "Flatbed"],
-  "40ft High Cube": ["Container Truck"],
-  "40ft Refrigerated": ["Refrigerated"],
-  "LCL": ["Box Truck", "Container Truck"]
+  "20ft Standard Container": ["Container Truck", "Flatbed"],
+  "20ft High Cube Container": ["Container Truck"],
+  "40ft Standard Container": ["Container Truck", "Flatbed"],
+  "40ft High Cube Container": ["Container Truck"],
+  "40ft Refrigerated Container": ["Refrigerated"],
+  "LCL Container": ["Box Truck", "Container Truck"]
+};
+
+// Tiered compatibility for fallback options
+const TIER_2_COMPATIBILITY: Record<string, TruckType[]> = {
+  "20ft Standard Container": ["Box Truck"],
+  "20ft High Cube Container": ["Flatbed"],
+  "40ft Standard Container": ["Box Truck"],
+  "40ft High Cube Container": ["Flatbed"],
+  "40ft Refrigerated Container": ["Container Truck"],
+  "LCL Container": ["Flatbed"]
 };
 
 function calculateTruckScore(
@@ -37,8 +47,11 @@ function calculateTruckScore(
   pickupDate?: string,
   pickupTime?: string
 ): TruckOption {
-  const compatibleTrucks = CONTAINER_TRUCK_COMPATIBILITY[containerResult.recommendedOption.container.displayName] || [];
-  const isCompatible = compatibleTrucks.includes(truck.truckType);
+  const containerName = containerResult.recommendedOption.container.displayName;
+  const tier1Compatible = CONTAINER_TRUCK_COMPATIBILITY[containerName] || [];
+  const tier2Compatible = TIER_2_COMPATIBILITY[containerName] || [];
+  const isPerfectMatch = tier1Compatible.includes(truck.truckType);
+  const isWorkableMatch = tier2Compatible.includes(truck.truckType);
   
   // Calculate capacity utilization
   const totalWeight = containerResult.totalWeight;
@@ -62,11 +75,15 @@ function calculateTruckScore(
   const issues: string[] = [];
   
   // Compatibility Score (40%)
-  if (isCompatible) {
+  if (isPerfectMatch) {
     score += 40;
-    pros.push(`Compatible with ${containerResult.recommendedOption.container.displayName}`);
+    pros.push(`Perfect match for ${containerName}`);
+  } else if (isWorkableMatch) {
+    score += 25;
+    pros.push(`Workable for ${containerName} with special handling`);
   } else {
-    issues.push(`Not compatible with recommended container type`);
+    score += 10;
+    cons.push(`Not ideal for ${containerName} - requires manual approval`);
   }
   
   // Availability Score (25%)
@@ -146,24 +163,53 @@ export function selectOptimalTruck(
   pickupDate?: string,
   pickupTime?: string
 ): TruckSelectionResult {
-  // Filter trucks that are at least potentially viable
-  const viableTrucks = trucks.filter(truck => {
-    const compatibleTrucks = CONTAINER_TRUCK_COMPATIBILITY[containerResult.recommendedOption.container.displayName] || [];
+  const containerName = containerResult.recommendedOption.container.displayName;
+  
+  // Tier 1: Perfect compatibility
+  const tier1Trucks = trucks.filter(truck => {
+    const compatibleTrucks = CONTAINER_TRUCK_COMPATIBILITY[containerName] || [];
     const isCompatible = compatibleTrucks.includes(truck.truckType);
     const canCarryWeight = containerResult.totalWeight <= truck.capacity.maxWeight;
     const canCarryVolume = containerResult.totalVolume <= truck.capacity.maxVolume;
     
-    return isCompatible && canCarryWeight && canCarryVolume;
+    return isCompatible && canCarryWeight && canCarryVolume && truck.isAvailableForBooking;
   });
   
-  // Score all viable trucks
-  const truckOptions = viableTrucks.map(truck => 
+  // Tier 2: Workable compatibility
+  const tier2Trucks = trucks.filter(truck => {
+    const tier2Compatible = TIER_2_COMPATIBILITY[containerName] || [];
+    const isCompatible = tier2Compatible.includes(truck.truckType);
+    const canCarryWeight = containerResult.totalWeight <= truck.capacity.maxWeight;
+    const canCarryVolume = containerResult.totalVolume <= truck.capacity.maxVolume;
+    
+    return isCompatible && canCarryWeight && canCarryVolume && truck.isAvailableForBooking;
+  });
+  
+  // Tier 3: Any truck with sufficient capacity
+  const tier3Trucks = trucks.filter(truck => {
+    const canCarryWeight = containerResult.totalWeight <= truck.capacity.maxWeight;
+    const canCarryVolume = containerResult.totalVolume <= truck.capacity.maxVolume;
+    
+    return canCarryWeight && canCarryVolume && truck.isAvailableForBooking;
+  });
+  
+  // Combine all options (prevent duplicates)
+  const allViableTrucks = [
+    ...tier1Trucks,
+    ...tier2Trucks.filter(t => !tier1Trucks.find(t1 => t1.truckId === t.truckId)),
+    ...tier3Trucks.filter(t => !tier1Trucks.find(t1 => t1.truckId === t.truckId) && 
+                              !tier2Trucks.find(t2 => t2.truckId === t.truckId))
+  ];
+  
+  // Score all trucks
+  const truckOptions = allViableTrucks.map(truck => 
     calculateTruckScore(truck, containerResult, origin, pickupDate, pickupTime)
   );
   
   // Sort by score (highest first)
   truckOptions.sort((a, b) => b.score - a.score);
   
+  // Ensure we always show at least 3 options if available
   const recommendedTruck = truckOptions.length > 0 ? truckOptions[0] : null;
   const alternativeOptions = truckOptions.slice(1, 4); // Top 3 alternatives
   
