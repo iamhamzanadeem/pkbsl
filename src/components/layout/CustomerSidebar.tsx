@@ -14,7 +14,7 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, Shield, Truck, FileText, LogOut, Building2, Plus } from 'lucide-react';
+import { LayoutDashboard, Shield, Truck, FileText, LogOut, Building2, Plus, TruckIcon } from 'lucide-react';
 
 export function CustomerSidebar() {
   const { logout, user } = useAuth();
@@ -46,6 +46,12 @@ export function CustomerSidebar() {
       title: 'Create Shipment',
       url: '/customer-portal/create-shipment',
       icon: Plus,
+      enabled: currentPortal.features.shipments,
+    },
+    {
+      title: 'Available Trucks',
+      url: '/customer-portal/trucks',
+      icon: TruckIcon,
       enabled: currentPortal.features.shipments,
     },
     {
