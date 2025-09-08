@@ -14,6 +14,7 @@ import { ShipmentMap } from "@/components/shipment/ShipmentMap";
 import { ProductForm, Product } from "@/components/shipment/ProductForm";
 import { ProductSummary } from "@/components/shipment/ProductSummary";
 import { TruckAssignment } from "@/components/shipment/TruckAssignment";
+import { ContainerVisualization } from "@/components/shipment/ContainerVisualization";
 import { generateBiltyPDF } from "@/utils/pdfGenerator";
 import { generateQRCode } from "@/utils/qrGenerator";
 import { selectOptimalContainer, ContainerSelectionResult } from "@/utils/containerSelection";
@@ -429,13 +430,24 @@ export function CreateShipmentPage() {
 
         {/* Results Section */}
         <div className="space-y-6">
+          {/* Container Visualization */}
+          <ContainerVisualization 
+            selectedContainer={stuffingPlan?.recommended.recommendedOption.container}
+            products={formData.products}
+            utilizationData={stuffingPlan ? {
+              volume: stuffingPlan.recommended.recommendedOption.utilization.volume,
+              weight: stuffingPlan.recommended.recommendedOption.utilization.weight,
+              efficiency: stuffingPlan.recommended.recommendedOption.efficiency.overallScore
+            } : undefined}
+          />
+
           {/* Stuffing Plan Results */}
           {stuffingPlan && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Truck className="h-5 w-5" />
-                  Recommended Container
+                  Container Analysis
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -453,8 +465,8 @@ export function CreateShipmentPage() {
                     <span className="font-medium">{stuffingPlan.recommended.recommendedOption.utilization.weight}%</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Arrangement:</span>
-                    <span className="font-medium text-sm">{stuffingPlan.arrangement}</span>
+                    <span className="text-sm text-muted-foreground">Efficiency Score:</span>
+                    <span className="font-medium">{stuffingPlan.recommended.recommendedOption.efficiency.overallScore}%</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Estimated Cost:</span>
