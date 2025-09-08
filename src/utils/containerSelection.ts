@@ -41,7 +41,7 @@ export interface ContainerSelectionResult {
 }
 
 // Standard container specifications based on real-world data
-const CONTAINER_SPECS: ContainerSpec[] = [
+export const CONTAINER_SPECS: ContainerSpec[] = [
   {
     type: "20ft_standard",
     displayName: "20ft Standard Container",

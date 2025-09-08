@@ -17,7 +17,7 @@ import { TruckAssignment } from "@/components/shipment/TruckAssignment";
 import { ContainerVisualization } from "@/components/shipment/ContainerVisualization";
 import { generateBiltyPDF } from "@/utils/pdfGenerator";
 import { generateQRCode } from "@/utils/qrGenerator";
-import { selectOptimalContainer, ContainerSelectionResult } from "@/utils/containerSelection";
+import { selectOptimalContainer, ContainerSelectionResult, CONTAINER_SPECS } from "@/utils/containerSelection";
 import { selectOptimalTruck, TruckSelectionResult } from "@/utils/truckSelection";
 import { mockTrucks } from "@/data/mockTrucks";
 import { Truck as TruckType } from "@/types/truck";
@@ -62,6 +62,7 @@ export function CreateShipmentPage() {
   });
 
   const [stuffingPlan, setStuffingPlan] = useState<StuffingPlan | null>(null);
+  const [selectedContainerType, setSelectedContainerType] = useState<string | null>(null);
   const [truckSelection, setTruckSelection] = useState<TruckSelectionResult | null>(null);
   const [selectedTruck, setSelectedTruck] = useState<TruckType | null>(null);
   const [eta, setETA] = useState<string>("");
@@ -70,15 +71,33 @@ export function CreateShipmentPage() {
   const [isCalculating, setIsCalculating] = useState(false);
 
   // Enhanced calculation function with optimal container selection
-  const calculateStuffingPlan = (data: ShipmentData): StuffingPlan => {
+  const calculateStuffingPlan = (data: ShipmentData, containerType?: string): StuffingPlan => {
     const validProducts = data.products.filter(p => p.productCode && p.cartons > 0);
     
     if (validProducts.length === 0) {
       throw new Error("No valid products found");
     }
 
-    // Use the enhanced container selection algorithm
-    const containerSelection = selectOptimalContainer(validProducts);
+    // Use the enhanced container selection algorithm or specific container type
+    let containerSelection: ContainerSelectionResult;
+    
+    if (containerType) {
+      // Find the specific container type requested
+      const specificContainer = CONTAINER_SPECS.find(c => c.type === containerType);
+      if (specificContainer) {
+        // Recalculate with the specific container
+        containerSelection = selectOptimalContainer(validProducts);
+        // Override the recommended option with the selected container
+        const specificOption = containerSelection.allOptions.find(opt => opt.container.type === containerType);
+        if (specificOption) {
+          containerSelection.recommendedOption = specificOption;
+        }
+      } else {
+        containerSelection = selectOptimalContainer(validProducts);
+      }
+    } else {
+      containerSelection = selectOptimalContainer(validProducts);
+    }
     
     const totalCartons = validProducts.reduce((sum, product) => sum + product.cartons, 0);
     
@@ -161,7 +180,7 @@ export function CreateShipmentPage() {
       // Simulate calculation delay
       await new Promise(resolve => setTimeout(resolve, 1500));
       
-      const plan = calculateStuffingPlan(formData);
+      const plan = calculateStuffingPlan(formData, selectedContainerType || undefined);
       setStuffingPlan(plan);
       
       // Select optimal truck based on container and route
@@ -217,6 +236,38 @@ export function CreateShipmentPage() {
     if (truck) {
       setSelectedTruck(truck);
       toast.success(`Truck ${truckId} assigned to shipment`);
+    }
+  };
+
+  const handleContainerChange = async (containerType: string) => {
+    setSelectedContainerType(containerType);
+    
+    // Recalculate stuffing plan with new container
+    if (formData.products.some(p => p.productCode && p.cartons > 0)) {
+      try {
+        const plan = calculateStuffingPlan(formData, containerType);
+        setStuffingPlan(plan);
+        
+        // Recalculate truck selection based on new container
+        if (plan) {
+          const truckOptions = selectOptimalTruck(
+            mockTrucks,
+            plan.recommended,
+            formData.origin,
+            formData.pickupDate,
+            formData.pickupTime
+          );
+          setTruckSelection(truckOptions);
+          
+          if (truckOptions.recommendedTruck) {
+            setSelectedTruck(truckOptions.recommendedTruck.truck);
+          }
+        }
+        
+        toast.success("Container type updated successfully");
+      } catch (error) {
+        toast.error("Error updating container type");
+      }
     }
   };
 
@@ -439,6 +490,8 @@ export function CreateShipmentPage() {
               weight: stuffingPlan.recommended.recommendedOption.utilization.weight,
               efficiency: stuffingPlan.recommended.recommendedOption.efficiency.overallScore
             } : undefined}
+            availableContainers={CONTAINER_SPECS}
+            onContainerChange={handleContainerChange}
           />
 
           {/* Stuffing Plan Results */}

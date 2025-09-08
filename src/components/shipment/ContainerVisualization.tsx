@@ -1,13 +1,11 @@
-import { useRef, useState, useEffect } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, Box, Text } from "@react-three/drei";
+import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Eye, RotateCcw, ZoomIn } from "lucide-react";
-import * as THREE from "three";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Eye, Package, ZoomIn, ZoomOut } from "lucide-react";
 
 interface ContainerSpec {
   type: string;
@@ -15,6 +13,7 @@ interface ContainerSpec {
   dimensions: { length: number; width: number; height: number };
   maxWeight: number;
   costPerContainer: number;
+  maxVolume: number;
 }
 
 interface Product {
@@ -33,96 +32,181 @@ interface ContainerVisualizationProps {
     weight: number;
     efficiency: number;
   };
+  availableContainers?: ContainerSpec[];
+  onContainerChange?: (containerType: string) => void;
 }
 
-// Container 3D Model Component
-function Container3D({ container, products }: { 
+// Container 2D Visualization Component
+function Container2D({ container, products, viewMode, zoom }: { 
   container: ContainerSpec; 
   products: Product[];
+  viewMode: "top" | "side" | "front";
+  zoom: number;
 }) {
-  const groupRef = useRef<THREE.Group>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  useFrame((state, delta) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.y += delta * 0.2;
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Set up dimensions based on view mode
+    const scale = 20 * zoom; // pixels per meter
+    let containerWidth = 0;
+    let containerHeight = 0;
+    let containerDepth = 0;
+
+    switch (viewMode) {
+      case "top":
+        containerWidth = container.dimensions.length * scale;
+        containerHeight = container.dimensions.width * scale;
+        containerDepth = container.dimensions.height;
+        break;
+      case "side":
+        containerWidth = container.dimensions.length * scale;
+        containerHeight = container.dimensions.height * scale;
+        containerDepth = container.dimensions.width;
+        break;
+      case "front":
+        containerWidth = container.dimensions.width * scale;
+        containerHeight = container.dimensions.height * scale;
+        containerDepth = container.dimensions.length;
+        break;
     }
-  });
 
-  // Calculate cargo boxes based on products
-  const cargoBoxes = products.flatMap((product, productIndex) => {
-    const boxes = [];
-    const cartonDimensions: [number, number, number] = [
-      product.dimensions.length / 100, // Convert cm to meters for 3D
-      product.dimensions.width / 100,
-      product.dimensions.height / 100
+    const offsetX = (canvas.width - containerWidth) / 2;
+    const offsetY = (canvas.height - containerHeight) / 2;
+
+    // Draw container outline
+    ctx.strokeStyle = 'hsl(var(--border))';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(offsetX, offsetY, containerWidth, containerHeight);
+
+    // Fill container background
+    ctx.fillStyle = 'hsl(var(--muted) / 0.1)';
+    ctx.fillRect(offsetX, offsetY, containerWidth, containerHeight);
+
+    // Draw products as boxes
+    const validProducts = products.filter(p => p.productCode && p.cartons > 0);
+    let currentX = offsetX + 10;
+    let currentY = offsetY + 10;
+    const maxHeight = containerHeight - 20;
+    const maxWidth = containerWidth - 20;
+
+    const colors = [
+      'hsl(var(--primary) / 0.7)',
+      'hsl(var(--secondary) / 0.7)',
+      'hsl(var(--accent) / 0.7)',
+      'hsl(221.2 83.2% 53.3% / 0.7)',
+      'hsl(142.1 76.2% 36.3% / 0.7)',
+      'hsl(38.1 100% 50% / 0.7)'
     ];
-    
-    for (let i = 0; i < Math.min(product.cartons, 20); i++) { // Limit display for performance
-      const x = (i % 4) * cartonDimensions[0] * 1.1 - 1.5;
-      const z = Math.floor(i / 4) * cartonDimensions[2] * 1.1 - 1.5;
-      const y = -container.dimensions.height / 200 + cartonDimensions[1] / 2;
-      
-      boxes.push(
-        <Box
-          key={`${product.id}-${i}`}
-          position={[x, y, z]}
-          args={cartonDimensions}
-        >
-          <meshPhongMaterial 
-            color={productIndex % 2 === 0 ? "#3b82f6" : "#10b981"} 
-            transparent
-            opacity={0.8}
-          />
-        </Box>
-      );
-    }
-    return boxes;
-  });
 
-  const containerDimensions: [number, number, number] = [
-    container.dimensions.length / 100,
-    container.dimensions.height / 100,
-    container.dimensions.width / 100
-  ];
+    validProducts.forEach((product, productIndex) => {
+      const color = colors[productIndex % colors.length];
+      ctx.fillStyle = color;
+      ctx.strokeStyle = color.replace('0.7', '1');
+      ctx.lineWidth = 1;
+
+      let productWidth = 0;
+      let productHeight = 0;
+
+      switch (viewMode) {
+        case "top":
+          productWidth = (product.dimensions.length / 100) * scale;
+          productHeight = (product.dimensions.width / 100) * scale;
+          break;
+        case "side":
+          productWidth = (product.dimensions.length / 100) * scale;
+          productHeight = (product.dimensions.height / 100) * scale;
+          break;
+        case "front":
+          productWidth = (product.dimensions.width / 100) * scale;
+          productHeight = (product.dimensions.height / 100) * scale;
+          break;
+      }
+
+      // Draw multiple cartons for this product
+      let cartonsDrawn = 0;
+      const maxCartonsToShow = Math.min(product.cartons, 50); // Limit for performance
+
+      for (let i = 0; i < maxCartonsToShow; i++) {
+        // Check if we need to move to next row
+        if (currentX + productWidth > offsetX + maxWidth) {
+          currentX = offsetX + 10;
+          currentY += productHeight + 5;
+        }
+
+        // Check if we have enough vertical space
+        if (currentY + productHeight > offsetY + maxHeight) {
+          break;
+        }
+
+        // Draw the carton
+        ctx.fillRect(currentX, currentY, productWidth, productHeight);
+        ctx.strokeRect(currentX, currentY, productWidth, productHeight);
+
+        // Add product label on first carton
+        if (i === 0) {
+          ctx.fillStyle = 'hsl(var(--foreground))';
+          ctx.font = `${Math.max(8, Math.min(12, productWidth / 6))}px sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.fillText(
+            product.productCode.substring(0, 6),
+            currentX + productWidth / 2,
+            currentY + productHeight / 2 + 4
+          );
+          ctx.fillStyle = color;
+        }
+
+        currentX += productWidth + 5;
+        cartonsDrawn++;
+      }
+
+      // Move to next row after each product type
+      currentX = offsetX + 10;
+      currentY += productHeight + 10;
+    });
+
+    // Draw dimensions
+    ctx.fillStyle = 'hsl(var(--muted-foreground))';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'center';
+
+    // Container dimensions label
+    let dimensionsText = '';
+    switch (viewMode) {
+      case "top":
+        dimensionsText = `${container.dimensions.length}m × ${container.dimensions.width}m`;
+        break;
+      case "side":
+        dimensionsText = `${container.dimensions.length}m × ${container.dimensions.height}m`;
+        break;
+      case "front":
+        dimensionsText = `${container.dimensions.width}m × ${container.dimensions.height}m`;
+        break;
+    }
+
+    ctx.fillText(
+      dimensionsText,
+      canvas.width / 2,
+      offsetY - 10
+    );
+
+  }, [container, products, viewMode, zoom]);
 
   return (
-    <group>
-      {/* Container Frame */}
-      <group ref={groupRef}>
-        {/* Floor */}
-        <Box position={[0, -containerDimensions[1]/2, 0]} args={[containerDimensions[0], 0.05, containerDimensions[2]]}>
-          <meshPhongMaterial color="#64748b" transparent opacity={0.3} />
-        </Box>
-        
-        {/* Walls */}
-        <Box position={[-containerDimensions[0]/2, 0, 0]} args={[0.05, containerDimensions[1], containerDimensions[2]]}>
-          <meshPhongMaterial color="#64748b" transparent opacity={0.2} />
-        </Box>
-        <Box position={[containerDimensions[0]/2, 0, 0]} args={[0.05, containerDimensions[1], containerDimensions[2]]}>
-          <meshPhongMaterial color="#64748b" transparent opacity={0.2} />
-        </Box>
-        <Box position={[0, 0, -containerDimensions[2]/2]} args={[containerDimensions[0], containerDimensions[1], 0.05]}>
-          <meshPhongMaterial color="#64748b" transparent opacity={0.2} />
-        </Box>
-        <Box position={[0, 0, containerDimensions[2]/2]} args={[containerDimensions[0], containerDimensions[1], 0.05]}>
-          <meshPhongMaterial color="#64748b" transparent opacity={0.2} />
-        </Box>
-        
-        {/* Cargo */}
-        {cargoBoxes}
-        
-        {/* Container Label */}
-        <Text
-          position={[0, containerDimensions[1]/2 + 0.2, 0]}
-          fontSize={0.2}
-          color="#1e40af"
-          anchorX="center"
-          anchorY="middle"
-        >
-          {container.displayName}
-        </Text>
-      </group>
-    </group>
+    <canvas
+      ref={canvasRef}
+      width={400}
+      height={300}
+      className="w-full h-64 border rounded-lg bg-background"
+    />
   );
 }
 
@@ -130,10 +214,12 @@ function Container3D({ container, products }: {
 export function ContainerVisualization({ 
   selectedContainer, 
   products, 
-  utilizationData 
+  utilizationData,
+  availableContainers = [],
+  onContainerChange
 }: ContainerVisualizationProps) {
-  const [viewMode, setViewMode] = useState<"3d" | "top" | "side">("3d");
-  const [autoRotate, setAutoRotate] = useState(true);
+  const [viewMode, setViewMode] = useState<"top" | "side" | "front">("top");
+  const [zoom, setZoom] = useState(1);
   
   const validProducts = products.filter(p => p.productCode && p.cartons > 0);
   
@@ -167,74 +253,82 @@ export function ContainerVisualization({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setAutoRotate(!autoRotate)}
+              onClick={() => setZoom(Math.max(0.5, zoom - 0.2))}
             >
-              <RotateCcw className="h-4 w-4" />
+              <ZoomOut className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setZoom(Math.min(2, zoom + 0.2))}
+            >
+              <ZoomIn className="h-4 w-4" />
             </Button>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Container Selection */}
+        {availableContainers.length > 0 && onContainerChange && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Container Type</label>
+            <Select 
+              value={selectedContainer.type} 
+              onValueChange={onContainerChange}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {availableContainers.map((container) => (
+                  <SelectItem key={container.type} value={container.type}>
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4" />
+                      <span>{container.displayName}</span>
+                      <Badge variant="outline" className="ml-auto">
+                        PKR {container.costPerContainer.toLocaleString()}
+                      </Badge>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         {/* View Mode Tabs */}
         <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as typeof viewMode)}>
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="3d">3D View</TabsTrigger>
             <TabsTrigger value="top">Top View</TabsTrigger>
             <TabsTrigger value="side">Side View</TabsTrigger>
+            <TabsTrigger value="front">Front View</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="3d" className="space-y-4">
-            <div className="h-64 bg-gradient-to-b from-sky-50 to-slate-100 rounded-lg border overflow-hidden">
-              <Canvas camera={{ position: [5, 3, 5], fov: 60 }}>
-                <ambientLight intensity={0.6} />
-                <directionalLight position={[10, 10, 5]} intensity={1} />
-                <pointLight position={[-10, -10, -5]} intensity={0.5} />
-                
-                <Container3D container={selectedContainer} products={validProducts} />
-                
-                <OrbitControls 
-                  enablePan={true} 
-                  enableZoom={true} 
-                  enableRotate={true}
-                  autoRotate={autoRotate}
-                  autoRotateSpeed={2}
-                />
-              </Canvas>
-            </div>
-          </TabsContent>
-          
           <TabsContent value="top" className="space-y-4">
-            <div className="h-64 bg-gradient-to-b from-sky-50 to-slate-100 rounded-lg border overflow-hidden">
-              <Canvas camera={{ position: [0, 8, 0], fov: 60 }}>
-                <ambientLight intensity={0.8} />
-                <directionalLight position={[0, 10, 0]} intensity={1} />
-                
-                <Container3D container={selectedContainer} products={validProducts} />
-                
-                <OrbitControls 
-                  enableRotate={false}
-                  enableZoom={true}
-                  enablePan={true}
-                />
-              </Canvas>
-            </div>
+            <Container2D 
+              container={selectedContainer} 
+              products={validProducts} 
+              viewMode="top"
+              zoom={zoom}
+            />
           </TabsContent>
           
           <TabsContent value="side" className="space-y-4">
-            <div className="h-64 bg-gradient-to-b from-sky-50 to-slate-100 rounded-lg border overflow-hidden">
-              <Canvas camera={{ position: [8, 0, 0], fov: 60 }}>
-                <ambientLight intensity={0.8} />
-                <directionalLight position={[10, 0, 0]} intensity={1} />
-                
-                <Container3D container={selectedContainer} products={validProducts} />
-                
-                <OrbitControls 
-                  enableRotate={false}
-                  enableZoom={true}
-                  enablePan={true}
-                />
-              </Canvas>
-            </div>
+            <Container2D 
+              container={selectedContainer} 
+              products={validProducts} 
+              viewMode="side"
+              zoom={zoom}
+            />
+          </TabsContent>
+          
+          <TabsContent value="front" className="space-y-4">
+            <Container2D 
+              container={selectedContainer} 
+              products={validProducts} 
+              viewMode="front"
+              zoom={zoom}
+            />
           </TabsContent>
         </Tabs>
         
@@ -248,15 +342,15 @@ export function ContainerVisualization({
           <div className="grid grid-cols-3 gap-4 text-sm">
             <div>
               <span className="text-muted-foreground">Length</span>
-              <p className="font-medium">{selectedContainer.dimensions.length} cm</p>
+              <p className="font-medium">{selectedContainer.dimensions.length}m</p>
             </div>
             <div>
               <span className="text-muted-foreground">Width</span>
-              <p className="font-medium">{selectedContainer.dimensions.width} cm</p>
+              <p className="font-medium">{selectedContainer.dimensions.width}m</p>
             </div>
             <div>
               <span className="text-muted-foreground">Height</span>
-              <p className="font-medium">{selectedContainer.dimensions.height} cm</p>
+              <p className="font-medium">{selectedContainer.dimensions.height}m</p>
             </div>
           </div>
           
