@@ -94,16 +94,12 @@ export function CreateShipmentPage() {
       throw new Error("No valid products found");
     }
 
-    // Use the enhanced container selection algorithm or specific container type
     let containerSelection: ContainerSelectionResult;
     
     if (containerType) {
-      // Find the specific container type requested
       const specificContainer = CONTAINER_SPECS.find(c => c.type === containerType);
       if (specificContainer) {
-        // Recalculate with the specific container
         containerSelection = selectOptimalContainer(validProducts);
-        // Override the recommended option with the selected container
         const specificOption = containerSelection.allOptions.find(opt => opt.container.type === containerType);
         if (specificOption) {
           containerSelection.recommendedOption = specificOption;
@@ -153,13 +149,6 @@ export function CreateShipmentPage() {
   };
 
   // Product management functions
-  const addProduct = () => {
-    setFormData(prev => ({
-      ...prev,
-      products: [...prev.products, createEmptyProduct()]
-    }));
-  };
-
   const updateProduct = (updatedProduct: Product) => {
     setFormData(prev => ({
       ...prev,
@@ -230,121 +219,6 @@ export function CreateShipmentPage() {
     setIsProductModalOpen(true);
   };
 
-  const handleSaveProduct = (product: Product) => {
-    if (editingProduct) {
-      setFormData(prev => ({
-        ...prev,
-        products: prev.products.map(p => p.id === editingProduct.id ? product : p)
-      }));
-    } else {
-      setFormData(prev => ({ ...prev, products: [...prev.products, product] }));
-    }
-    setIsProductModalOpen(false);
-    setEditingProduct(null);
-  };
-
-  // Mock ETA calculation
-  const calculateETA = (origin: string, destination: string, pickupDate: string, pickupTime: string): string => {
-    const routes = {
-      "Karachi-Lahore": 20,
-      "Karachi-Islamabad": 24,
-      "Lahore-Islamabad": 6,
-      "Karachi-Peshawar": 28,
-      "Lahore-Karachi": 20
-    };
-    
-    const routeKey = `${origin}-${destination}` as keyof typeof routes;
-    const hours = routes[routeKey] || 12;
-    
-    const pickupDateTime = new Date(`${pickupDate}T${pickupTime}`);
-    const etaDateTime = new Date(pickupDateTime.getTime() + hours * 60 * 60 * 1000);
-    
-    return etaDateTime.toLocaleString();
-  };
-
-  // Product management functions
-  const addProduct = () => {
-    setFormData(prev => ({
-      ...prev,
-      products: [...prev.products, createEmptyProduct()]
-    }));
-  };
-
-  const updateProduct = (updatedProduct: Product) => {
-    setFormData(prev => ({
-      ...prev,
-      products: prev.products.map(p => p.id === updatedProduct.id ? updatedProduct : p)
-    }));
-  };
-
-  const removeProduct = (productId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      products: prev.products.filter(p => p.id !== productId)
-    }));
-  };
-
-  const duplicateProduct = (product: Product) => {
-    const newProduct = { ...product, id: crypto.randomUUID() };
-    setFormData(prev => ({
-      ...prev,
-      products: [...prev.products, newProduct]
-    }));
-  };
-
-  // Wizard navigation functions
-  const canAdvanceFromStep = (stepId: string): boolean => {
-    switch (stepId) {
-      case "products":
-        return formData.products.some(p => p.productCode && p.cartons > 0);
-      case "route":
-        return !!(formData.origin && formData.destination);
-      case "container":
-        return stuffingPlan !== null;
-      case "truck":
-        return selectedTruck !== null;
-      default:
-        return true;
-    }
-  };
-
-  const goToNextStep = () => {
-    const currentIndex = steps.findIndex(s => s.id === currentStep);
-    if (currentIndex < steps.length - 1 && canAdvanceFromStep(currentStep)) {
-      const nextStep = steps[currentIndex + 1];
-      setCurrentStep(nextStep.id);
-      
-      // Mark current step as completed
-      if (!completedSteps.includes(currentStep)) {
-        setCompletedSteps(prev => [...prev, currentStep]);
-      }
-    }
-  };
-
-  const goToPreviousStep = () => {
-    const currentIndex = steps.findIndex(s => s.id === currentStep);
-    if (currentIndex > 0) {
-      const previousStep = steps[currentIndex - 1];
-      setCurrentStep(previousStep.id);
-    }
-  };
-
-  const goToStep = (stepId: string) => {
-    const stepIndex = steps.findIndex(s => s.id === stepId);
-    const currentIndex = steps.findIndex(s => s.id === currentStep);
-    
-    // Can only go to completed steps or adjacent steps
-    if (completedSteps.includes(stepId) || Math.abs(stepIndex - currentIndex) <= 1) {
-      setCurrentStep(stepId);
-    }
-  };
-
-  // Product modal handlers
-  const handleEditProduct = (product: Product) => {
-    setEditingProduct(product);
-    setIsProductModalOpen(true);
-  };
-
   const handleAddProduct = () => {
     setEditingProduct(null);
     setIsProductModalOpen(true);
@@ -354,10 +228,7 @@ export function CreateShipmentPage() {
     if (editingProduct) {
       updateProduct(product);
     } else {
-      setFormData(prev => ({
-        ...prev,
-        products: [...prev.products, product]
-      }));
+      setFormData(prev => ({ ...prev, products: [...prev.products, product] }));
     }
     setIsProductModalOpen(false);
     setEditingProduct(null);
@@ -374,13 +245,11 @@ export function CreateShipmentPage() {
     setIsCalculating(true);
     
     try {
-      // Simulate calculation delay
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       const plan = calculateStuffingPlan(formData, selectedContainerType || undefined);
       setStuffingPlan(plan);
       
-      // Select optimal truck based on container and route
       const truckOptions = selectOptimalTruck(
         mockTrucks,
         plan.recommended,
@@ -390,7 +259,6 @@ export function CreateShipmentPage() {
       );
       setTruckSelection(truckOptions);
       
-      // Auto-select recommended truck if available
       if (truckOptions.recommendedTruck) {
         setSelectedTruck(truckOptions.recommendedTruck.truck);
       }
@@ -400,11 +268,9 @@ export function CreateShipmentPage() {
         setETA(calculatedETA);
       }
       
-      // Generate bilty number
       const biltyNo = `BSL-${Date.now().toString().slice(-6)}`;
       setBiltyNumber(biltyNo);
       
-      // Generate QR code with all products
       const qrData = {
         biltyNo,
         clientCode: "SHELL001",
@@ -439,13 +305,11 @@ export function CreateShipmentPage() {
   const handleContainerChange = async (containerType: string) => {
     setSelectedContainerType(containerType);
     
-    // Recalculate stuffing plan with new container
     if (formData.products.some(p => p.productCode && p.cartons > 0)) {
       try {
         const plan = calculateStuffingPlan(formData, containerType);
         setStuffingPlan(plan);
         
-        // Recalculate truck selection based on new container
         if (plan) {
           const truckOptions = selectOptimalTruck(
             mockTrucks,
@@ -470,7 +334,6 @@ export function CreateShipmentPage() {
 
   const handleContactDriver = (truck: TruckType) => {
     toast.info(`Calling ${truck.driverName} at ${truck.driverContact}`);
-    // In a real app, this would initiate a phone call or open a contact dialog
   };
 
   const handleGeneratePDF = async () => {
@@ -493,7 +356,6 @@ export function CreateShipmentPage() {
       eta,
       qrCodeDataUrl,
       clientCode: "SHELL001",
-      // Include truck details if assigned
       ...(selectedTruck && {
         truck: {
           truckId: selectedTruck.truckId,
@@ -506,7 +368,6 @@ export function CreateShipmentPage() {
     };
 
     await generateBiltyPDF(pdfData);
-    
     toast.success("Bilty PDF generated successfully!");
   };
 
@@ -566,7 +427,6 @@ export function CreateShipmentPage() {
                   </Select>
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="pickupDate">Pickup Date</Label>
@@ -587,7 +447,6 @@ export function CreateShipmentPage() {
                   />
                 </div>
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="instructions">Special Instructions</Label>
                 <Textarea
@@ -752,7 +611,6 @@ export function CreateShipmentPage() {
 
   return (
     <div className="space-y-6 p-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <SidebarTrigger />
@@ -763,7 +621,6 @@ export function CreateShipmentPage() {
         </div>
       </div>
 
-      {/* Step Progress */}
       <StepProgress
         steps={steps}
         currentStep={currentStep}
@@ -772,11 +629,9 @@ export function CreateShipmentPage() {
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Form Section */}
         <div className="lg:col-span-2 space-y-6">
           {renderStepContent()}
 
-          {/* Navigation Buttons */}
           <div className="flex justify-between pt-6">
             <Button
               variant="outline"
@@ -799,7 +654,6 @@ export function CreateShipmentPage() {
           </div>
         </div>
 
-        {/* Sidebar Section */}
         <div className="space-y-6">
           {formData.origin && formData.destination && (
             <Card>
@@ -810,17 +664,61 @@ export function CreateShipmentPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ShipmentMap
-                  origin={formData.origin}
-                  destination={formData.destination}
-                />
+                <ShipmentMap origin={formData.origin} destination={formData.destination} />
+              </CardContent>
+            </Card>
+          )}
+
+          {stuffingPlan && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  Shipment Summary
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium">Total Cartons:</span>
+                    <p>{formData.products.reduce((sum, p) => sum + p.cartons, 0)}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium">Total Weight:</span>
+                    <p>{formData.products.reduce((sum, p) => sum + (p.cartons * p.weightPerCarton), 0).toFixed(1)} kg</p>
+                  </div>
+                  <div>
+                    <span className="font-medium">Container:</span>
+                    <p>{stuffingPlan.recommended.recommendedOption.container.displayName}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium">Efficiency:</span>
+                    <p>{(stuffingPlan.recommended.recommendedOption.utilization.volume * 100).toFixed(1)}%</p>
+                  </div>
+                </div>
+                
+                {eta && (
+                  <div>
+                    <span className="font-medium text-sm">Estimated Arrival:</span>
+                    <p className="text-sm">{eta}</p>
+                  </div>
+                )}
+                
+                {biltyNumber && (
+                  <div className="flex items-center gap-2">
+                    <QrCode className="h-4 w-4" />
+                    <div>
+                      <span className="font-medium text-sm">Bilty Number:</span>
+                      <p className="text-sm">{biltyNumber}</p>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
         </div>
       </div>
 
-      {/* Product Edit Modal */}
       <ProductEditModal
         product={editingProduct}
         isOpen={isProductModalOpen}
