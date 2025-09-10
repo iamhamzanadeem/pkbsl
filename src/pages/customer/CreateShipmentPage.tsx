@@ -6,15 +6,16 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { CalendarDays, Package, MapPin, Truck, Clock, Download, QrCode, Plus, Phone } from "lucide-react";
+import { CalendarDays, Package, MapPin, Truck, Clock, Download, QrCode, ChevronLeft, ChevronRight, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { ShipmentMap } from "@/components/shipment/ShipmentMap";
-import { ProductForm, Product } from "@/components/shipment/ProductForm";
+import { Product } from "@/components/shipment/ProductForm";
 import { ProductSummary } from "@/components/shipment/ProductSummary";
 import { TruckAssignment } from "@/components/shipment/TruckAssignment";
 import { ContainerVisualization } from "@/components/shipment/ContainerVisualization";
+import { StepProgress, Step } from "@/components/shipment/StepProgress";
+import { ProductGrid } from "@/components/shipment/ProductGrid";
+import { ProductEditModal } from "@/components/shipment/ProductEditModal";
 import { generateBiltyPDF } from "@/utils/pdfGenerator";
 import { generateQRCode } from "@/utils/qrGenerator";
 import { selectOptimalContainer, ContainerSelectionResult, CONTAINER_SPECS } from "@/utils/containerSelection";
@@ -52,6 +53,21 @@ const createEmptyProduct = (): Product => ({
 });
 
 export function CreateShipmentPage() {
+  // Wizard steps configuration
+  const steps: Step[] = [
+    { id: "products", title: "Products", description: "Add products to shipment" },
+    { id: "route", title: "Route & Pickup", description: "Set pickup details" },
+    { id: "container", title: "Container Selection", description: "Optimize container usage" },
+    { id: "truck", title: "Truck Assignment", description: "Assign delivery truck" },
+    { id: "review", title: "Review & Generate", description: "Complete shipment" }
+  ];
+
+  // State management
+  const [currentStep, setCurrentStep] = useState("products");
+  const [completedSteps, setCompletedSteps] = useState<string[]>([]);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+
   const [formData, setFormData] = useState<ShipmentData>({
     products: [createEmptyProduct()],
     origin: "",
@@ -164,6 +180,187 @@ export function CreateShipmentPage() {
       ...prev,
       products: [...prev.products, newProduct]
     }));
+  };
+
+  // Wizard navigation functions
+  const canAdvanceFromStep = (stepId: string): boolean => {
+    switch (stepId) {
+      case "products":
+        return formData.products.some(p => p.productCode && p.cartons > 0);
+      case "route":
+        return !!(formData.origin && formData.destination);
+      case "container":
+        return stuffingPlan !== null;
+      case "truck":
+        return selectedTruck !== null;
+      default:
+        return true;
+    }
+  };
+
+  const goToNextStep = () => {
+    const currentIndex = steps.findIndex(s => s.id === currentStep);
+    if (currentIndex < steps.length - 1 && canAdvanceFromStep(currentStep)) {
+      const nextStep = steps[currentIndex + 1];
+      setCurrentStep(nextStep.id);
+      if (!completedSteps.includes(currentStep)) {
+        setCompletedSteps(prev => [...prev, currentStep]);
+      }
+    }
+  };
+
+  const goToPreviousStep = () => {
+    const currentIndex = steps.findIndex(s => s.id === currentStep);
+    if (currentIndex > 0) {
+      setCurrentStep(steps[currentIndex - 1].id);
+    }
+  };
+
+  const goToStep = (stepId: string) => {
+    const stepIndex = steps.findIndex(s => s.id === stepId);
+    const currentIndex = steps.findIndex(s => s.id === currentStep);
+    if (completedSteps.includes(stepId) || Math.abs(stepIndex - currentIndex) <= 1) {
+      setCurrentStep(stepId);
+    }
+  };
+
+  // Product modal handlers
+  const handleEditProduct = (product: Product) => {
+    setEditingProduct(product);
+    setIsProductModalOpen(true);
+  };
+
+  const handleSaveProduct = (product: Product) => {
+    if (editingProduct) {
+      setFormData(prev => ({
+        ...prev,
+        products: prev.products.map(p => p.id === editingProduct.id ? product : p)
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, products: [...prev.products, product] }));
+    }
+    setIsProductModalOpen(false);
+    setEditingProduct(null);
+  };
+
+  // Mock ETA calculation
+  const calculateETA = (origin: string, destination: string, pickupDate: string, pickupTime: string): string => {
+    const routes = {
+      "Karachi-Lahore": 20,
+      "Karachi-Islamabad": 24,
+      "Lahore-Islamabad": 6,
+      "Karachi-Peshawar": 28,
+      "Lahore-Karachi": 20
+    };
+    
+    const routeKey = `${origin}-${destination}` as keyof typeof routes;
+    const hours = routes[routeKey] || 12;
+    
+    const pickupDateTime = new Date(`${pickupDate}T${pickupTime}`);
+    const etaDateTime = new Date(pickupDateTime.getTime() + hours * 60 * 60 * 1000);
+    
+    return etaDateTime.toLocaleString();
+  };
+
+  // Product management functions
+  const addProduct = () => {
+    setFormData(prev => ({
+      ...prev,
+      products: [...prev.products, createEmptyProduct()]
+    }));
+  };
+
+  const updateProduct = (updatedProduct: Product) => {
+    setFormData(prev => ({
+      ...prev,
+      products: prev.products.map(p => p.id === updatedProduct.id ? updatedProduct : p)
+    }));
+  };
+
+  const removeProduct = (productId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      products: prev.products.filter(p => p.id !== productId)
+    }));
+  };
+
+  const duplicateProduct = (product: Product) => {
+    const newProduct = { ...product, id: crypto.randomUUID() };
+    setFormData(prev => ({
+      ...prev,
+      products: [...prev.products, newProduct]
+    }));
+  };
+
+  // Wizard navigation functions
+  const canAdvanceFromStep = (stepId: string): boolean => {
+    switch (stepId) {
+      case "products":
+        return formData.products.some(p => p.productCode && p.cartons > 0);
+      case "route":
+        return !!(formData.origin && formData.destination);
+      case "container":
+        return stuffingPlan !== null;
+      case "truck":
+        return selectedTruck !== null;
+      default:
+        return true;
+    }
+  };
+
+  const goToNextStep = () => {
+    const currentIndex = steps.findIndex(s => s.id === currentStep);
+    if (currentIndex < steps.length - 1 && canAdvanceFromStep(currentStep)) {
+      const nextStep = steps[currentIndex + 1];
+      setCurrentStep(nextStep.id);
+      
+      // Mark current step as completed
+      if (!completedSteps.includes(currentStep)) {
+        setCompletedSteps(prev => [...prev, currentStep]);
+      }
+    }
+  };
+
+  const goToPreviousStep = () => {
+    const currentIndex = steps.findIndex(s => s.id === currentStep);
+    if (currentIndex > 0) {
+      const previousStep = steps[currentIndex - 1];
+      setCurrentStep(previousStep.id);
+    }
+  };
+
+  const goToStep = (stepId: string) => {
+    const stepIndex = steps.findIndex(s => s.id === stepId);
+    const currentIndex = steps.findIndex(s => s.id === currentStep);
+    
+    // Can only go to completed steps or adjacent steps
+    if (completedSteps.includes(stepId) || Math.abs(stepIndex - currentIndex) <= 1) {
+      setCurrentStep(stepId);
+    }
+  };
+
+  // Product modal handlers
+  const handleEditProduct = (product: Product) => {
+    setEditingProduct(product);
+    setIsProductModalOpen(true);
+  };
+
+  const handleAddProduct = () => {
+    setEditingProduct(null);
+    setIsProductModalOpen(true);
+  };
+
+  const handleSaveProduct = (product: Product) => {
+    if (editingProduct) {
+      updateProduct(product);
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        products: [...prev.products, product]
+      }));
+    }
+    setIsProductModalOpen(false);
+    setEditingProduct(null);
   };
 
   const handleCalculate = async () => {
@@ -313,51 +510,21 @@ export function CreateShipmentPage() {
     toast.success("Bilty PDF generated successfully!");
   };
 
-  return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <SidebarTrigger />
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Create New Shipment</h1>
-            <p className="text-muted-foreground">Generate bilty with optimized stuffing plan</p>
-          </div>
-        </div>
-      </div>
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case "products":
+        return (
+          <ProductGrid
+            products={formData.products}
+            onAddProduct={handleAddProduct}
+            onEditProduct={handleEditProduct}
+            onDuplicateProduct={duplicateProduct}
+            onRemoveProduct={removeProduct}
+          />
+        );
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Form Section */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Products Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold">Products</h2>
-                <p className="text-sm text-muted-foreground">Add one or more products to this shipment</p>
-              </div>
-              <Button onClick={addProduct} variant="outline" className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Add Product
-              </Button>
-            </div>
-            
-            {formData.products.map((product, index) => (
-              <ProductForm
-                key={product.id}
-                product={product}
-                index={index}
-                onUpdate={updateProduct}
-                onRemove={removeProduct}
-                onDuplicate={duplicateProduct}
-                canRemove={formData.products.length > 1}
-              />
-            ))}
-            
-            <ProductSummary products={formData.products} />
-          </div>
-
-          {/* Route Information */}
+      case "route":
+        return (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -433,279 +600,236 @@ export function CreateShipmentPage() {
               </div>
             </CardContent>
           </Card>
+        );
 
-          {/* Truck Assignment */}
-          {truckSelection && (
-            <TruckAssignment
-              truckSelection={truckSelection}
-              selectedTruckId={selectedTruck?.truckId || null}
-              onTruckSelect={handleTruckSelect}
-              onContactDriver={handleContactDriver}
-            />
-          )}
+      case "container":
+        return (
+          <div className="space-y-6">
+            {!stuffingPlan ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Calculate Container Selection</CardTitle>
+                  <CardDescription>Calculate the optimal container and stuffing plan for your products</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button 
+                    onClick={handleCalculate} 
+                    disabled={isCalculating}
+                    className="flex items-center gap-2"
+                  >
+                    <Truck className="h-4 w-4" />
+                    {isCalculating ? "Calculating..." : "Calculate Stuffing Plan"}
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-6 lg:grid-cols-2">
+                <ContainerVisualization
+                  products={formData.products}
+                  selectedContainer={stuffingPlan.recommended.recommendedOption.container}
+                  utilizationData={{
+                    ...stuffingPlan.recommended.recommendedOption.utilization,
+                    efficiency: (stuffingPlan.recommended.recommendedOption.utilization.volume * stuffingPlan.recommended.recommendedOption.utilization.weight) / 2
+                  }}
+                  onContainerChange={handleContainerChange}
+                />
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Container Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ProductSummary products={formData.products} />
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </div>
+        );
 
-          {/* Action Buttons */}
-          <div className="flex gap-4">
-            <Button 
-              onClick={handleCalculate} 
-              disabled={isCalculating}
-              className="flex items-center gap-2"
-            >
-              <Truck className="h-4 w-4" />
-              {isCalculating ? "Calculating..." : "Calculate Stuffing Plan"}
-            </Button>
+      case "truck":
+        return truckSelection ? (
+          <TruckAssignment
+            truckSelection={truckSelection}
+            selectedTruckId={selectedTruck?.truckId || null}
+            onTruckSelect={handleTruckSelect}
+            onContactDriver={handleContactDriver}
+          />
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>No Truck Options Available</CardTitle>
+              <CardDescription>Please complete the container selection step first</CardDescription>
+            </CardHeader>
+          </Card>
+        );
+
+      case "review":
+        return (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Shipment Summary</CardTitle>
+                <CardDescription>Review your shipment details before generating the bilty</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium">Origin</Label>
+                    <p>{formData.origin}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium">Destination</Label>
+                    <p>{formData.destination}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium">Pickup Date</Label>
+                    <p>{formData.pickupDate}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium">Pickup Time</Label>
+                    <p>{formData.pickupTime}</p>
+                  </div>
+                </div>
+                
+                {stuffingPlan && (
+                  <div>
+                    <Label className="text-sm font-medium">Container Type</Label>
+                    <p>{stuffingPlan.recommended.recommendedOption.container.displayName}</p>
+                  </div>
+                )}
+                
+                {selectedTruck && (
+                  <div>
+                    <Label className="text-sm font-medium">Assigned Truck</Label>
+                    <p>{selectedTruck.truckId} - {selectedTruck.driverName}</p>
+                  </div>
+                )}
+                
+                {eta && (
+                  <div>
+                    <Label className="text-sm font-medium">Estimated Arrival</Label>
+                    <p>{eta}</p>
+                  </div>
+                )}
+                
+                {biltyNumber && (
+                  <div>
+                    <Label className="text-sm font-medium">Bilty Number</Label>
+                    <p>{biltyNumber}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
             
-            {stuffingPlan && (
+            <div className="flex gap-4">
               <Button 
                 onClick={handleGeneratePDF}
-                variant="outline"
+                disabled={!stuffingPlan || !biltyNumber}
                 className="flex items-center gap-2"
               >
                 <Download className="h-4 w-4" />
                 Generate PDF
               </Button>
-            )}
-            
-            {selectedTruck && (
-              <Button 
-                onClick={() => handleContactDriver(selectedTruck)}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <Phone className="h-4 w-4" />
-                Contact Driver
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Results Section */}
-        <div className="space-y-6">
-          {/* Container Visualization */}
-          <ContainerVisualization 
-            selectedContainer={stuffingPlan?.recommended.recommendedOption.container}
-            products={formData.products}
-            utilizationData={stuffingPlan ? {
-              volume: stuffingPlan.recommended.recommendedOption.utilization.volume,
-              weight: stuffingPlan.recommended.recommendedOption.utilization.weight,
-              efficiency: stuffingPlan.recommended.recommendedOption.efficiency.overallScore
-            } : undefined}
-            availableContainers={CONTAINER_SPECS}
-            onContainerChange={handleContainerChange}
-          />
-
-          {/* Stuffing Plan Results */}
-          {stuffingPlan && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Truck className="h-5 w-5" />
-                  Container Analysis
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Container Type:</span>
-                    <Badge variant="secondary">{stuffingPlan.recommended.recommendedOption.container.displayName}</Badge>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Volume Utilization:</span>
-                    <span className="font-medium">{stuffingPlan.recommended.recommendedOption.utilization.volume}%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Weight Utilization:</span>
-                    <span className="font-medium">{stuffingPlan.recommended.recommendedOption.utilization.weight}%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Efficiency Score:</span>
-                    <span className="font-medium">{stuffingPlan.recommended.recommendedOption.efficiency.overallScore}%</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Estimated Cost:</span>
-                    <span className="font-medium">PKR {stuffingPlan.recommended.recommendedOption.container.costPerContainer.toLocaleString()}</span>
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="space-y-2">
-                    <div className="text-sm font-medium">Recommendation Reason:</div>
-                    <p className="text-sm text-muted-foreground">{stuffingPlan.recommended.recommendedOption.reasoning}</p>
-                    
-                    {stuffingPlan.recommended.recommendedOption.pros.length > 0 && (
-                      <div className="space-y-1">
-                        <div className="text-xs font-medium text-green-600">Advantages:</div>
-                        <ul className="text-xs text-muted-foreground space-y-0.5">
-                          {stuffingPlan.recommended.recommendedOption.pros.map((pro, index) => (
-                            <li key={index}>• {pro}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    
-                    {stuffingPlan.recommended.recommendedOption.cons.length > 0 && (
-                      <div className="space-y-1">
-                        <div className="text-xs font-medium text-amber-600">Considerations:</div>
-                        <ul className="text-xs text-muted-foreground space-y-0.5">
-                          {stuffingPlan.recommended.recommendedOption.cons.map((con, index) => (
-                            <li key={index}>• {con}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {stuffingPlan.recommended.allOptions.filter(opt => opt.canFit && opt.container.type !== stuffingPlan.recommended.recommendedOption.container.type).length > 0 && (
-                    <>
-                      <Separator />
-                      <div className="space-y-2">
-                        <div className="text-sm font-medium">Alternative Options:</div>
-                        {stuffingPlan.recommended.allOptions
-                          .filter(opt => opt.canFit && opt.container.type !== stuffingPlan.recommended.recommendedOption.container.type)
-                          .slice(0, 2)
-                          .map((option, index) => (
-                            <div key={index} className="p-2 border rounded-lg space-y-1">
-                              <div className="flex justify-between items-center">
-                                <span className="text-sm font-medium">{option.container.displayName}</span>
-                                <span className="text-xs text-muted-foreground">Score: {option.efficiency.overallScore}/100</span>
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                Vol: {option.utilization.volume}% | Cost: PKR {option.container.costPerContainer.toLocaleString()}
-                              </div>
-                            </div>
-                          ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-                
-                {stuffingPlan.productBreakdown.length > 1 && (
-                  <>
-                    <Separator />
-                    <div className="space-y-2">
-                      <div className="text-sm font-medium">Product Distribution:</div>
-                      {stuffingPlan.productBreakdown.map((product, index) => (
-                        <div key={index} className="flex justify-between items-center text-sm">
-                          <span className="text-muted-foreground">{product.productCode}</span>
-                          <div className="flex gap-1">
-                            <Badge variant="outline" className="text-xs">
-                              {product.cartons} cartons
-                            </Badge>
-                            <Badge variant="outline" className="text-xs">
-                              {product.weight.toFixed(1)} kg
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-                
-                <Separator />
-                
-                {biltyNumber && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Bilty Number:</span>
-                      <Badge>{biltyNumber}</Badge>
-                    </div>
-                  </div>
-                )}
-                
-                {eta && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-start">
-                      <span className="text-sm text-muted-foreground">Expected ETA:</span>
-                      <div className="text-right">
-                        <div className="font-medium text-sm">{eta}</div>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          Estimated
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                {qrCodeDataUrl && (
-                  <div className="space-y-2">
-                    <Separator />
-                    <div className="text-center">
-                      <div className="flex items-center justify-center gap-2 mb-2">
-                        <QrCode className="h-4 w-4" />
-                        <span className="text-sm font-medium">QR Code</span>
-                      </div>
-                      <img src={qrCodeDataUrl} alt="Bilty QR Code" className="mx-auto w-24 h-24" />
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Assigned Truck Information */}
-          {selectedTruck && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Truck className="h-5 w-5" />
-                  Assigned Truck
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Truck ID:</span>
-                  <Badge variant="outline">{selectedTruck.truckId}</Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Driver:</span>
-                  <span className="font-medium">{selectedTruck.driverName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Contact:</span>
-                  <span className="font-medium">{selectedTruck.driverContact}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Plate Number:</span>
-                  <span className="font-medium">{selectedTruck.plateNumber}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Type:</span>
-                  <span className="font-medium">{selectedTruck.truckType}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Current Location:</span>
-                  <span className="font-medium">{selectedTruck.currentLocation}</span>
-                </div>
-                
-                <Separator />
-                
+              
+              {selectedTruck && (
                 <Button 
-                  variant="outline" 
-                  className="w-full flex items-center gap-2"
                   onClick={() => handleContactDriver(selectedTruck)}
+                  variant="outline"
+                  className="flex items-center gap-2"
                 >
                   <Phone className="h-4 w-4" />
                   Contact Driver
                 </Button>
+              )}
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="space-y-6 p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <SidebarTrigger />
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Create New Shipment</h1>
+            <p className="text-muted-foreground">Generate bilty with optimized stuffing plan</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Step Progress */}
+      <StepProgress
+        steps={steps}
+        currentStep={currentStep}
+        completedSteps={completedSteps}
+        onStepClick={goToStep}
+      />
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Form Section */}
+        <div className="lg:col-span-2 space-y-6">
+          {renderStepContent()}
+
+          {/* Navigation Buttons */}
+          <div className="flex justify-between pt-6">
+            <Button
+              variant="outline"
+              onClick={goToPreviousStep}
+              disabled={currentStep === "products"}
+              className="flex items-center gap-2"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </Button>
+            
+            <Button
+              onClick={goToNextStep}
+              disabled={!canAdvanceFromStep(currentStep) || currentStep === "review"}
+              className="flex items-center gap-2"
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Sidebar Section */}
+        <div className="space-y-6">
+          {formData.origin && formData.destination && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5" />
+                  Route Map
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ShipmentMap
+                  origin={formData.origin}
+                  destination={formData.destination}
+                />
               </CardContent>
             </Card>
           )}
-
-          {/* Map */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Route Map</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ShipmentMap 
-                origin={formData.origin} 
-                destination={formData.destination}
-              />
-            </CardContent>
-          </Card>
         </div>
       </div>
+
+      {/* Product Edit Modal */}
+      <ProductEditModal
+        product={editingProduct}
+        isOpen={isProductModalOpen}
+        onClose={() => {
+          setIsProductModalOpen(false);
+          setEditingProduct(null);
+        }}
+        onSave={handleSaveProduct}
+      />
     </div>
   );
 }
