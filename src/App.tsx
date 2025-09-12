@@ -15,6 +15,9 @@ import { InvoicesPage } from "@/pages/customer/InvoicesPage";
 import { CreateShipmentPage } from "@/pages/customer/CreateShipmentPage";
 import TrucksPage from "@/pages/customer/TrucksPage";
 import { AdminDashboard } from "@/pages/admin/AdminDashboard";
+import { LicensingDashboard } from "@/pages/admin/LicensingDashboard";
+import { FeatureManagementPage } from "@/pages/admin/FeatureManagementPage";
+import { PricingManagementPage } from "@/pages/admin/PricingManagementPage";
 import { AdminShipmentsPage } from "@/pages/admin/AdminShipmentsPage";
 import { AdminHSEPage } from "@/pages/admin/AdminHSEPage";
 import { AdminInvoicesPage } from "@/pages/admin/AdminInvoicesPage";
@@ -46,6 +49,9 @@ const App = () => (
                   <PortalLayout>
                     <Routes>
                       <Route path="dashboard" element={<AdminDashboard />} />
+                      <Route path="licensing" element={<LicensingDashboard />} />
+                      <Route path="features" element={<FeatureManagementPage />} />
+                      <Route path="pricing" element={<PricingManagementPage />} />
                       <Route path="customers" element={<div className="p-6"><h1 className="text-2xl font-bold">Customer Management</h1><p className="text-muted-foreground">Coming soon...</p></div>} />
                       <Route path="users" element={<div className="p-6"><h1 className="text-2xl font-bold">User Management</h1><p className="text-muted-foreground">Coming soon...</p></div>} />
                       <Route path="shipments" element={<AdminShipmentsPage />} />

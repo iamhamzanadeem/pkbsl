@@ -23,7 +23,9 @@ import {
   FileText, 
   Database,
   LogOut,
-  Crown
+  Crown,
+  Flag,
+  DollarSign
 } from 'lucide-react';
 
 export function AdminSidebar() {
@@ -35,6 +37,21 @@ export function AdminSidebar() {
       title: 'Dashboard',
       url: '/admin/dashboard',
       icon: LayoutDashboard,
+    },
+    {
+      title: 'Licensing Portal',
+      url: '/admin/licensing',
+      icon: Crown,
+    },
+    {
+      title: 'Feature Management',
+      url: '/admin/features',
+      icon: Flag,
+    },
+    {
+      title: 'Pricing Plans',
+      url: '/admin/pricing',
+      icon: DollarSign,
     },
     {
       title: 'HSE Monitoring',

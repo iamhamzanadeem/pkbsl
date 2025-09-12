@@ -2,7 +2,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'admin' | 'customer_admin' | 'viewer';
+  role: 'super_admin' | 'admin' | 'customer_admin' | 'viewer';
   customerId?: string;
   portalAccess: string[];
 }
